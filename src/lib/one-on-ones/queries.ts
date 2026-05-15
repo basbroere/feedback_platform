@@ -155,6 +155,7 @@ export type TeamMember = PersonRef & {
   role: "employee" | "manager" | "hr";
   last_one_on_one_at: string | null;
   weeks_since_last: number | null;
+  upcoming_one_on_one_at: string | null;
 };
 
 // Leden van het team waar deze user als lead_user_id staat.
@@ -178,23 +179,34 @@ export async function getTeamMembers(
     .order("name");
   if (memberErr || !members) return [];
 
-  // last_one_on_one_at per member (meest recente completed of scheduled)
   const ids = members.map((m) => m.id);
-  let lastByEmployee = new Map<string, string>();
+  const lastByEmployee = new Map<string, string>();
+  const upcomingByEmployee = new Map<string, string>();
   if (ids.length) {
-    const { data: lastRows } = await supabase
+    const { data: rows } = await supabase
       .from("one_on_ones")
       .select("employee_id, scheduled_at, completed_at")
       .eq("manager_id", managerId)
       .in("employee_id", ids)
       .order("scheduled_at", { ascending: false });
-    if (lastRows) {
-      lastByEmployee = lastRows.reduce((acc, row) => {
+    if (rows) {
+      const nowIso = new Date().toISOString();
+      for (const row of rows) {
         const stamp = row.completed_at ?? row.scheduled_at;
-        if (!stamp) return acc;
-        if (!acc.has(row.employee_id)) acc.set(row.employee_id, stamp);
-        return acc;
-      }, new Map<string, string>());
+        if (stamp && !lastByEmployee.has(row.employee_id)) {
+          lastByEmployee.set(row.employee_id, stamp);
+        }
+        if (
+          !row.completed_at &&
+          row.scheduled_at &&
+          row.scheduled_at >= nowIso
+        ) {
+          const current = upcomingByEmployee.get(row.employee_id);
+          if (!current || row.scheduled_at < current) {
+            upcomingByEmployee.set(row.employee_id, row.scheduled_at);
+          }
+        }
+      }
     }
   }
 
@@ -212,6 +224,7 @@ export async function getTeamMembers(
       role: m.role,
       last_one_on_one_at: stamp,
       weeks_since_last: weeksSince,
+      upcoming_one_on_one_at: upcomingByEmployee.get(m.id) ?? null,
     };
   });
 }

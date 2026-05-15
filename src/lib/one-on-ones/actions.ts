@@ -25,11 +25,19 @@ async function requirePersonaId(): Promise<string> {
 
 const DEFAULT_SUBJECT = "Reguliere 1-op-1";
 
+export type RecurrenceInput = {
+  intervalWeeks: 1 | 2 | 4;
+  occurrences: number;
+};
+
+const MAX_OCCURRENCES = 12;
+
 export async function createOneOnOne(input: {
   employeeId: string;
   subject?: string;
   scheduledAt: string;
-}): Promise<{ id: string }> {
+  recurrence?: RecurrenceInput | null;
+}): Promise<{ id: string; created: number }> {
   const managerId = await requirePersonaId();
   const subject = input.subject?.trim() || DEFAULT_SUBJECT;
 
@@ -55,24 +63,40 @@ export async function createOneOnOne(input: {
 
   const template = await getDefaultOneOnOneTemplate();
 
-  const { data, error } = await supabase
-    .from("one_on_ones")
-    .insert({
+  const occurrences = input.recurrence
+    ? Math.min(Math.max(input.recurrence.occurrences, 1), MAX_OCCURRENCES)
+    : 1;
+  const intervalDays = input.recurrence
+    ? input.recurrence.intervalWeeks * 7
+    : 0;
+
+  const start = new Date(input.scheduledAt);
+  const rows = Array.from({ length: occurrences }, (_, i) => {
+    const at = new Date(start);
+    if (i > 0) at.setDate(at.getDate() + intervalDays * i);
+    return {
       manager_id: managerId,
       employee_id: input.employeeId,
       template_id: template?.id ?? null,
       subject,
-      scheduled_at: input.scheduledAt,
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw new Error(error?.message ?? "Inplannen mislukt");
+      scheduled_at: at.toISOString(),
+    };
+  });
+
+  const { data, error } = await supabase
+    .from("one_on_ones")
+    .insert(rows)
+    .select("id, scheduled_at")
+    .order("scheduled_at", { ascending: true });
+  if (error || !data || data.length === 0) {
+    throw new Error(error?.message ?? "Inplannen mislukt");
+  }
 
   revalidatePath("/team");
   revalidatePath(`/team/${input.employeeId}`);
   revalidatePath("/een-op-een");
   revalidatePath("/dashboard");
-  return { id: data.id };
+  return { id: data[0].id, created: data.length };
 }
 
 export async function saveEmployeePreparation(input: {

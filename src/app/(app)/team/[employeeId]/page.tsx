@@ -4,10 +4,12 @@ import { ChevronLeft } from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getActiveActionItemsForEmployeeWithManager,
   getTeamMembers,
   listOneOnOnesForPair,
 } from "@/lib/one-on-ones/queries";
 import { HistoryTable } from "@/components/one-on-one/history-table";
+import { ActionItemList } from "@/components/one-on-one/action-item-list";
 import { ScheduleDialog } from "@/components/one-on-one/schedule-dialog";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 
@@ -35,7 +37,11 @@ export default async function TeamMemberPage({
     redirect("/team");
   }
 
-  const items = await listOneOnOnesForPair(persona.id, employeeId);
+  const [items, actionItems] = await Promise.all([
+    listOneOnOnesForPair(persona.id, employeeId),
+    getActiveActionItemsForEmployeeWithManager(employeeId, persona.id),
+  ]);
+  const openActionItems = actionItems.filter((i) => i.status === "open");
 
   return (
     <div className="space-y-8">
@@ -74,7 +80,34 @@ export default async function TeamMemberPage({
         />
       </header>
 
-      <HistoryTable items={items} emptyLabel="Plan jullie eerste 1-op-1 in." />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="space-y-3">
+          <h2 className="text-[15px] font-semibold tracking-tight">
+            1-op-1&apos;s
+          </h2>
+          <HistoryTable
+            items={items}
+            emptyLabel="Plan jullie eerste 1-op-1 in."
+          />
+        </section>
+
+        <aside className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              Open actiepunten
+            </h2>
+            {openActionItems.length > 0 ? (
+              <span className="text-[12.5px] text-muted-foreground">
+                {openActionItems.length}
+              </span>
+            ) : null}
+          </div>
+          <ActionItemList
+            items={openActionItems}
+            emptyLabel="Geen open actiepunten uit jullie 1-op-1's."
+          />
+        </aside>
+      </div>
     </div>
   );
 }
