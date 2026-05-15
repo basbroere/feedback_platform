@@ -44,6 +44,7 @@ export async function updateActionItemStatus(input: {
   revalidatePath("/een-op-een");
   revalidatePath("/team");
   revalidatePath("/dashboard");
+  revalidatePath("/dossier");
 }
 
 export async function createActionItemForOneOnOne(input: {
