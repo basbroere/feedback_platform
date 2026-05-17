@@ -11,9 +11,9 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ROLE_TONE: Record<string, string> = {
-  manager: "bg-primary/10 text-primary ring-primary/15",
-  hr: "bg-violet-50 text-violet-700 ring-violet-100 dark:bg-violet-950/40 dark:text-violet-300 dark:ring-violet-900/60",
-  employee: "bg-muted text-muted-foreground ring-border",
+  manager: "bg-primary/10 text-primary",
+  hr: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
+  employee: "bg-muted text-muted-foreground",
 };
 
 export function PersonaPicker({
@@ -24,18 +24,13 @@ export function PersonaPicker({
   currentId: string | null;
 }) {
   return (
-    <div className="mt-12 space-y-10">
+    <div className="mt-7 space-y-5">
       {teams.map((team) => (
-        <div key={team.id}>
-          <div className="flex items-baseline justify-between border-b border-border pb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {team.name}
-            </h2>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {team.members.length} personen
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <section key={team.id}>
+          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {team.name}
+          </h2>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {team.members.map((m) => {
               const isCurrent = m.id === currentId;
               return (
@@ -44,47 +39,43 @@ export function PersonaPicker({
                   <button
                     type="submit"
                     className={cn(
-                      "group flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-all",
+                      "group flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition-colors",
                       "hover:border-foreground/15 hover:bg-accent/40",
                       isCurrent && "border-primary/40 ring-2 ring-primary/10",
                     )}
                   >
                     <div
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[13px] font-semibold",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11.5px] font-semibold",
                         avatarBgClass(m.id),
                       )}
                     >
                       {getInitials(m.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{m.name}</p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ring-1 ring-inset",
-                            ROLE_TONE[m.role] ?? ROLE_TONE.employee,
-                          )}
-                        >
-                          {ROLE_LABEL[m.role] ?? m.role}
-                        </span>
+                      <p className="truncate text-[13px] font-medium leading-tight">
+                        {m.name}
                       </p>
+                      <span
+                        className={cn(
+                          "mt-0.5 inline-flex items-center rounded px-1 py-px text-[9.5px] font-semibold uppercase tracking-[0.1em]",
+                          ROLE_TONE[m.role] ?? ROLE_TONE.employee,
+                        )}
+                      >
+                        {ROLE_LABEL[m.role] ?? m.role}
+                      </span>
                     </div>
                     {isCurrent ? (
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-3 w-3" strokeWidth={2.5} />
                       </span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground/0 transition-opacity group-hover:text-muted-foreground">
-                        kies
-                      </span>
-                    )}
+                    ) : null}
                   </button>
                 </form>
               );
             })}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
