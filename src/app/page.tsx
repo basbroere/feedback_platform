@@ -29,38 +29,24 @@ export default async function StartScreen({
 
   return (
     <main className="flex min-h-svh flex-col bg-background">
-      <header className="mx-auto w-full max-w-5xl px-6 pt-10 md:pt-14">
-        <Image
-          src="https://cdn.homerun.co/59203/logo-bambelo1630332176logo.png"
-          alt="Bambelo"
-          width={280}
-          height={280}
-          priority
-          unoptimized
-          className="h-8 w-auto object-contain"
-        />
-      </header>
-
-      <section className="mx-auto w-full max-w-5xl flex-1 px-6 pb-20 pt-14">
-        <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            Demo-modus
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl">
-            Kies een persona en kijk rond.
+      <div className="mx-auto w-full max-w-5xl px-6 pt-8 pb-10">
+        <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <Image
+            src="https://cdn.homerun.co/59203/logo-bambelo1630332176logo.png"
+            alt="Bambelo"
+            width={240}
+            height={240}
+            priority
+            unoptimized
+            className="h-7 w-auto object-contain"
+          />
+          <h1 className="text-[20px] font-semibold tracking-tight md:text-[22px]">
+            Kies een persona
           </h1>
-          <p className="mt-4 text-base text-muted-foreground md:text-lg">
-            Geen administratielast, geen harde deadlines. Wel een rustige rode draad door je
-            1-op-1&apos;s, functioneringsgesprekken en beoordelingen.
-          </p>
-        </div>
+        </header>
 
         <PersonaPicker teams={teams} currentId={currentId} />
-      </section>
-
-      <footer className="mx-auto w-full max-w-5xl px-6 pb-8 text-[11px] text-muted-foreground">
-        Bambelo, 2026, scriptie-demo
-      </footer>
+      </div>
     </main>
   );
 }
