@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Lock, Eye } from "lucide-react";
+import { Check, Lock, Eye, Plus, X, MessageSquareHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,9 @@ export function MeetingView({
   );
   const [privateNotes, setPrivateNotes] = useState(
     oneOnOne.manager_private_notes ?? "",
+  );
+  const [feedbackBody, setFeedbackBody] = useState(
+    oneOnOne.existing_manager_feedback ?? "",
   );
   const [summaryMode, setSummaryMode] = useState<"shared" | "private">("shared");
   const [previous, setPrevious] = useState<ActionItem[]>(previousActionItems);
@@ -108,6 +111,7 @@ export function MeetingView({
           privateNotes,
           actionItemUpdates: updates,
           newActionItems: [],
+          feedbackBody,
           complete,
         });
         setSavedAt(new Date().toISOString());
@@ -203,17 +207,35 @@ export function MeetingView({
           <CardTitle>Nieuwe actiepunten</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <NewActionItemInput
+          <NewActionItems
             oneOnOneId={oneOnOne.id}
-            onCreated={(item) => setCreated((p) => [...p, item])}
-            defaultOwner={oneOnOne.employee}
-          />
-          <ActionItemEditList
             items={created}
+            ownerOptions={ownerOptions}
+            defaultOwner={oneOnOne.employee}
+            onCreated={(item) => setCreated((p) => [...p, item])}
             onStatus={setCreatedStatus}
             onOwner={setCreatedOwner}
-            ownerOptions={ownerOptions}
-            emptyLabel="Nog geen actiepunten uit dit gesprek."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquareHeart className="h-4 w-4 text-muted-foreground" />
+            Feedback aan {oneOnOne.employee.name}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="manager-feedback" className="text-muted-foreground">
+            Optioneel. {oneOnOne.employee.name} ziet dit terug op de feedback-pagina.
+          </Label>
+          <Textarea
+            id="manager-feedback"
+            value={feedbackBody}
+            onChange={(e) => setFeedbackBody(e.target.value)}
+            placeholder={`Iets dat je ${oneOnOne.employee.name.split(" ")[0]} mee wil geven? Wat zag je goed gaan, waar zie je een kans?`}
+            rows={4}
           />
         </CardContent>
       </Card>
@@ -319,44 +341,112 @@ function SummaryToggle({
   );
 }
 
-function NewActionItemInput({
+function NewActionItems({
   oneOnOneId,
-  onCreated,
+  items,
+  ownerOptions,
   defaultOwner,
+  onCreated,
+  onStatus,
+  onOwner,
 }: {
   oneOnOneId: string;
-  onCreated: (item: ActionItem) => void;
+  items: ActionItem[];
+  ownerOptions: PersonRef[];
   defaultOwner: PersonRef;
+  onCreated: (item: ActionItem) => void;
+  onStatus: (id: string, status: Status) => void;
+  onOwner: (id: string, owner: PersonRef) => void;
 }) {
-  const [value, setValue] = useState("");
+  const [drafting, setDrafting] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      {items.length === 0 && !drafting ? (
+        <p className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
+          Nog geen actiepunten uit dit gesprek.
+        </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <ul className="space-y-2">
+          {items.map((it) => (
+            <ActionItemEditRow
+              key={it.id}
+              item={it}
+              onStatus={onStatus}
+              onOwner={onOwner}
+              ownerOptions={ownerOptions}
+            />
+          ))}
+        </ul>
+      ) : null}
+
+      {drafting ? (
+        <DraftActionItem
+          oneOnOneId={oneOnOneId}
+          defaultOwner={defaultOwner}
+          onSaved={(item) => {
+            onCreated(item);
+            setDrafting(false);
+          }}
+          onCancel={() => setDrafting(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setDrafting(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-card/40 px-4 py-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Actiepunt toevoegen
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DraftActionItem({
+  oneOnOneId,
+  defaultOwner,
+  onSaved,
+  onCancel,
+}: {
+  oneOnOneId: string;
+  defaultOwner: PersonRef;
+  onSaved: (item: ActionItem) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
-    const description = value.trim();
-    if (!description) return;
+    const t = title.trim();
+    if (!t) return;
+    const notes = description.trim() ? description.trim() : null;
     setError(null);
     startTransition(async () => {
       try {
         const { id } = await createActionItemForOneOnOne({
           oneOnOneId,
-          description,
+          description: t,
+          notes,
         });
-        const now = new Date().toISOString();
-        onCreated({
+        onSaved({
           id,
           owner_id: defaultOwner.id,
-          description,
+          description: t,
           status: "open",
           target_date: null,
-          notes: null,
+          notes,
           source_type: "one_on_one",
           source_id: oneOnOneId,
-          created_at: now,
+          created_at: new Date().toISOString(),
           completed_at: null,
           owner: defaultOwner,
         });
-        setValue("");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Toevoegen mislukt");
       }
@@ -364,34 +454,64 @@ function NewActionItemInput({
   }
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2">
+    <div className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
+      <span
+        aria-hidden
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background"
+      />
+      <div className="min-w-0 flex-1 space-y-2">
         <Input
-          placeholder="Wat is de actie?"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          autoFocus
+          placeholder="Titel van het actiepunt"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               submit();
             }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel();
+            }
           }}
           disabled={isPending}
+          className="h-8 text-[14px]"
+          aria-label="Titel"
         />
+        <Textarea
+          placeholder="Beschrijving (optioneel)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={isPending}
+          rows={2}
+          className="text-[13px]"
+          aria-label="Beschrijving"
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+      <div className="flex shrink-0 flex-col gap-1">
         <Button
           type="button"
           size="icon-sm"
           variant="secondary"
           onClick={submit}
-          disabled={isPending || value.trim().length === 0}
-          aria-label="Voeg actiepunt toe"
+          disabled={isPending || title.trim().length === 0}
+          aria-label="Actiepunt opslaan"
         >
           <Check className="h-3.5 w-3.5" />
         </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          onClick={onCancel}
+          disabled={isPending}
+          aria-label="Annuleren"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : null}
     </div>
   );
 }
@@ -493,6 +613,16 @@ function ActionItemEditRow({
         >
           {item.description}
         </p>
+        {item.notes ? (
+          <p
+            className={cn(
+              "mt-1 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground",
+              completed && "line-through",
+            )}
+          >
+            {item.notes}
+          </p>
+        ) : null}
         {owner ? (
           canSwitchOwner ? (
             <DropdownMenu>

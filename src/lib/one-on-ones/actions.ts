@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersonaId } from "@/lib/persona/server";
+import { upsertManagerFeedbackForOneOnOne } from "@/lib/feedback/actions";
 import { getDefaultOneOnOneTemplate } from "./template";
 
 type ActionStatus = "open" | "completed" | "expired";
@@ -146,6 +147,7 @@ export async function saveManagerMeeting(input: {
   privateNotes: string;
   actionItemUpdates: ActionItemUpdate[];
   newActionItems: NewActionItemInput[];
+  feedbackBody?: string;
   complete?: boolean;
 }) {
   const managerId = await requirePersonaId();
@@ -200,11 +202,20 @@ export async function saveManagerMeeting(input: {
     }
   }
 
+  if (input.feedbackBody !== undefined) {
+    await upsertManagerFeedbackForOneOnOne({
+      oneOnOneId: input.oneOnOneId,
+      body: input.feedbackBody,
+    });
+  }
+
   revalidatePath(`/een-op-een/${input.oneOnOneId}`);
   revalidatePath(`/team/${row.employee_id}`);
   revalidatePath("/team");
   revalidatePath("/een-op-een");
   revalidatePath("/dashboard");
+  revalidatePath("/actiepunten");
+  revalidatePath("/feedback");
 }
 
 export async function completeOneOnOne(oneOnOneId: string) {

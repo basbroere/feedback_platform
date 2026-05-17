@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 type TabKey = "open" | "completed" | "all";
 
-export function DossierView({
+export function ActionItemsView({
   open,
   completed,
 }: {
@@ -86,11 +86,7 @@ export function DossierView({
         ) : (
           <ul className="divide-y divide-border">
             {items.map((it) => (
-              <Row
-                key={it.id}
-                item={it}
-                onOpen={() => setSelected(it)}
-              />
+              <Row key={it.id} item={it} onOpen={() => setSelected(it)} />
             ))}
           </ul>
         )}
@@ -285,7 +281,7 @@ function EmptyState({ tab, hasQuery }: { tab: TabKey; hasQuery: boolean }) {
       ? "Geen openstaande actiepunten. Niks om je druk over te maken."
       : tab === "completed"
       ? "Nog niks afgerond in de afgelopen 12 maanden."
-      : "Je dossier is nog leeg. Na je eerste 1-op-1 vult dit zich vanzelf.";
+      : "Je actiepunten zijn nog leeg. Na je eerste 1-op-1 vult dit zich vanzelf.";
   return (
     <div className="px-6 py-12 text-center">
       <p className="text-sm text-muted-foreground">{message}</p>

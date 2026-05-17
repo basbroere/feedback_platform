@@ -78,6 +78,7 @@ type Question = {
   kind: "open" | "scale_1_5" | "choice_single" | "choice_multi";
   options?: string[];
   required?: boolean;
+  hint?: string;
 };
 
 type SeedTemplate = {
@@ -142,21 +143,58 @@ const TEMPLATES: SeedTemplate[] = [
     type: "peer_360",
     name: "Algemene peer feedback",
     questions: [
-      { id: "context", label: "Op welke samenwerking baseer je deze feedback?", kind: "open", required: true },
-      { id: "goed", label: "Wat gaat goed in de samenwerking?", kind: "open", required: true },
-      { id: "beter", label: "Wat zou nog beter kunnen?", kind: "open", required: true },
-      { id: "gedrag", label: "Welk gedrag valt je positief op?", kind: "open" },
-      { id: "kans", label: "Welke ontwikkelkans zie je?", kind: "open" },
+      {
+        id: "goed",
+        label: "Wat doet deze collega goed?",
+        kind: "open",
+        required: true,
+        hint: "Begin met een concrete situatie. Wat zag je gebeuren, en waarom werkte dat?",
+      },
+      {
+        id: "beter",
+        label: "Waar zie je een verbeterpunt?",
+        kind: "open",
+        required: true,
+        hint: "Eén punt is genoeg. Een voorbeeld helpt het te laten landen.",
+      },
+      {
+        id: "kans",
+        label: "Waar kan deze collega de komende tijd op groeien?",
+        kind: "open",
+        hint: "Denk aan een vaardigheid, gewoonte of focuspunt waar je kansen ziet.",
+      },
     ],
   },
   {
     type: "peer_360",
     name: "Cross-team samenwerking",
     questions: [
-      { id: "context", label: "Hoe werken jullie team en deze persoon samen?", kind: "open", required: true },
-      { id: "toegevoegd", label: "Wat voegt deze persoon toe aan de samenwerking?", kind: "open", required: true },
-      { id: "verbeter", label: "Welke wrijving zou nog weg kunnen?", kind: "open" },
-      { id: "kans", label: "Welke kans zie je voor betere cross-team samenwerking?", kind: "open" },
+      {
+        id: "context",
+        label: "Hoe werken jullie samen vanuit jouw team?",
+        kind: "open",
+        required: true,
+        hint: "Schets kort de context van jullie samenwerking. Waar raken jullie elkaar?",
+      },
+      {
+        id: "toegevoegd",
+        label: "Wat brengt deze collega mee dat jullie team helpt?",
+        kind: "open",
+        required: true,
+        hint: "Een vaardigheid, houding of perspectief dat je waardeert.",
+      },
+      {
+        id: "verbeter",
+        label: "Waar loopt het tussen jullie teams nog niet soepel?",
+        kind: "open",
+        hint: "Een concreet voorbeeld maakt het bespreekbaar zonder oordeel.",
+      },
+      {
+        id: "kans",
+        label: "Wat zou de samenwerking nog beter maken?",
+        kind: "open",
+        hint: "Iets praktisch dat jullie vaker of anders zouden kunnen doen.",
+      },
     ],
   },
   {
@@ -176,6 +214,8 @@ async function wipe() {
   // Volgorde van foreign keys naar parents toe.
   const tables = [
     "notifications",
+    "feedback",
+    "feedback_requests",
     "action_items",
     "peer_feedback",
     "evaluations",
@@ -264,6 +304,28 @@ async function seed() {
     templateId: regulierTemplate.id,
   });
 
+  const peerTemplateAlgemeen = insertedTemplates.find(
+    (t) => t.type === "peer_360" && t.name === "Algemene peer feedback",
+  );
+  const peerTemplateCross = insertedTemplates.find(
+    (t) => t.type === "peer_360" && t.name === "Cross-team samenwerking",
+  );
+  if (peerTemplateAlgemeen && peerTemplateCross) {
+    console.log("Peer feedback-aanvragen aanmaken...");
+    await seedPeerFeedbackRequests({
+      users: users as SeedUserRow[],
+      teamIdByName,
+      algemeenTemplate: {
+        id: peerTemplateAlgemeen.id,
+        questions: (peerTemplateAlgemeen.questions ?? []) as Question[],
+      },
+      crossTemplate: {
+        id: peerTemplateCross.id,
+        questions: (peerTemplateCross.questions ?? []) as Question[],
+      },
+    });
+  }
+
   console.log("");
   console.log(
     `Klaar. ${teams.length} teams, ${users.length} users, ${TEMPLATES.length} templates ingeladen.`,
@@ -288,6 +350,13 @@ const PRIVATE_NOTES = [
   "Lijkt vermoeider de laatste weken, kort houden de komende keer.",
   "Wil meer eigenaarschap, kijken of we daar in Q3 ruimte voor maken.",
   "Communiceert assertiever sinds laatste feedback, goed teken.",
+];
+
+const FEEDBACK_BODIES = [
+  "Je rust en overzicht in lastige klantgesprekken viel me deze weken extra op. Houd dat vast. Een volgende stap zou zijn dat je dat ook expliciet maakt richting het team, zodat zij van je aanpak leren.",
+  "Mooie groei in hoe je nu zelf het initiatief neemt om obstakels op tafel te leggen. Volgende keer mag je nog wat eerder aan de bel trekken; dan hebben we meer ruimte om er samen iets mee te doen.",
+  "Wat goed dat je vorige week die kennissessie hebt opgepakt. Mensen reageren positief. Probeer dat soort momenten vaker te plannen, ik denk dat het bij je past.",
+  "Ik waardeer je betrokkenheid bij het team. Aandachtspunt: probeer in vergaderingen ook ruimte te laten voor anderen, dan komen jouw punten nog scherper landen.",
 ];
 
 const PREP_SAMPLES: Array<Record<string, string>> = [
@@ -525,8 +594,214 @@ async function seedOneOnOnes({
     if (aiErr) throw new Error(`Insert action_items failed: ${aiErr.message}`);
   }
 
+  // Bij circa 40% van de afgeronde 1-op-1's krijgt de medewerker manager-feedback.
+  const feedbackRows: Array<{
+    recipient_id: string;
+    author_id: string;
+    source_type: "one_on_one";
+    source_id: string;
+    body: string;
+    status: "submitted";
+    submitted_at: string;
+  }> = [];
+
+  const completedOnes = insertedOnes.filter((o) => o.completed_at !== null);
+  completedOnes.forEach((one, idx) => {
+    if (idx % 5 < 2) {
+      feedbackRows.push({
+        recipient_id: one.employee_id,
+        author_id: one.manager_id,
+        source_type: "one_on_one",
+        source_id: one.id,
+        body: FEEDBACK_BODIES[idx % FEEDBACK_BODIES.length],
+        status: "submitted",
+        submitted_at: one.completed_at as string,
+      });
+    }
+  });
+
+  if (feedbackRows.length) {
+    const { error: fbErr } = await supabase.from("feedback").insert(feedbackRows);
+    if (fbErr) throw new Error(`Insert feedback failed: ${fbErr.message}`);
+  }
+
   console.log(
-    `  ${oneOnOneRows.length} 1-op-1's en ${actionRows.length} actiepunten ingeladen.`,
+    `  ${oneOnOneRows.length} 1-op-1's, ${actionRows.length} actiepunten en ${feedbackRows.length} feedback-items ingeladen.`,
+  );
+}
+
+async function seedPeerFeedbackRequests({
+  users,
+  teamIdByName,
+  algemeenTemplate,
+  crossTemplate,
+}: {
+  users: SeedUserRow[];
+  teamIdByName: Map<string, string>;
+  algemeenTemplate: { id: string; questions: Question[] };
+  crossTemplate: { id: string; questions: Question[] };
+}) {
+  // Twee aanvragers: een uit Partner Happiness en een uit Marketing.
+  // Per aanvraag een mix van eigen team en cross-team peers, deels ingevuld.
+  const partnerTeamId = teamIdByName.get("Partner Happiness");
+  const itTeamId = teamIdByName.get("IT");
+  const marketingTeamId = teamIdByName.get("Marketing");
+  if (!partnerTeamId || !itTeamId || !marketingTeamId) return;
+
+  type Plan = {
+    requesterEmail: string;
+    template: { id: string; questions: Question[] };
+    prompt: string;
+    peers: Array<{
+      email: string;
+      submitted?: Record<string, string>;
+      declined?: boolean;
+    }>;
+  };
+
+  const plans: Plan[] = [
+    {
+      requesterEmail: "laura.bakker@bambelo.nl",
+      template: algemeenTemplate,
+      prompt:
+        "Ik werk de laatste weken bewuster aan rust en overzicht in mijn klantgesprekken. Hoe ervaar jij dat?",
+      peers: [
+        {
+          email: "mehmet.yilmaz@bambelo.nl",
+          submitted: {
+            goed:
+              "In bijna alle klantcalls die we samen doen laat je klanten echt uitpraten en blijf je rustig als een case complex wordt. Daardoor vatten ze hun eigen vraag scherper samen, en wij krijgen veel betere input om mee verder te werken.",
+            beter:
+              "Soms blijf je iets te lang in de luisterende rol. Een vraag stevig terugleggen helpt ons om sneller een afspraak te maken.",
+            kans:
+              "Probeer per gesprek bewust 1 concrete afspraak op tafel te krijgen.",
+          },
+        },
+        {
+          email: "joris.vandijk@bambelo.nl",
+          submitted: {
+            goed:
+              "Toen we samen het portaal-issue met Acme oplosten legde je voor IT precies uit waar het pijnpunt zit zonder oordeel. Dat scheelt ons uren bug-jagen.",
+            beter:
+              "Een kort schermopname-moment vooraf zou nog meer context geven.",
+            kans:
+              "Je zou een 'partner-IT-bridge' rol kunnen claimen, daar zit duidelijk behoefte aan.",
+          },
+        },
+        { email: "anouk.janssen@bambelo.nl" }, // open
+      ],
+    },
+    {
+      requesterEmail: "noah.klein@bambelo.nl",
+      template: crossTemplate,
+      prompt:
+        "We hebben dit kwartaal vaker samengewerkt met Consumer Happiness en IT. Hoe loopt dat vanuit jouw kant?",
+      peers: [
+        {
+          email: "aisha.elamrani@bambelo.nl",
+          submitted: {
+            context:
+              "We werken samen aan de zomercampagne en de consumer-flow.",
+            toegevoegd:
+              "Je denkt met ons mee in de toon van klantmails, dat tilt het echt op.",
+            verbeter:
+              "Sneller op tafel leggen wanneer een briefing nog gaten heeft, scheelt iedereen werk.",
+            kans:
+              "Een gezamenlijke pre-launch check met Consumer Happiness zou veel ruis kunnen vangen.",
+          },
+        },
+        {
+          email: "priya.patel@bambelo.nl",
+          declined: true,
+        },
+        { email: "mark.hofstra@bambelo.nl" }, // open, zelfde team
+      ],
+    },
+  ];
+
+  type RequestRow = {
+    id: string;
+    requester_id: string;
+    template_id: string;
+    prompt: string | null;
+  };
+  type FeedbackRow = {
+    recipient_id: string;
+    author_id: string;
+    source_type: "peer_request";
+    source_id: string;
+    prompt: string | null;
+    responses: Record<string, string>;
+    status: "requested" | "submitted" | "declined";
+    requested_at: string;
+    submitted_at: string | null;
+  };
+
+  const requestInserts = plans
+    .map((p) => {
+      const requester = users.find((u) => u.email === p.requesterEmail);
+      if (!requester) return null;
+      return {
+        requester_id: requester.id,
+        template_id: p.template.id,
+        prompt: p.prompt,
+      };
+    })
+    .filter((r): r is { requester_id: string; template_id: string; prompt: string } => r !== null);
+
+  const { data: insertedRequests, error: reqErr } = await supabase
+    .from("feedback_requests")
+    .insert(requestInserts)
+    .select("id, requester_id, template_id, prompt");
+  if (reqErr || !insertedRequests) {
+    throw new Error(`Insert feedback_requests failed: ${reqErr?.message}`);
+  }
+
+  const requestByRequester = new Map<string, RequestRow>();
+  for (const r of insertedRequests as RequestRow[]) {
+    requestByRequester.set(r.requester_id, r);
+  }
+
+  const feedbackInserts: FeedbackRow[] = [];
+  for (const plan of plans) {
+    const requester = users.find((u) => u.email === plan.requesterEmail);
+    if (!requester) continue;
+    const request = requestByRequester.get(requester.id);
+    if (!request) continue;
+
+    plan.peers.forEach((peer, idx) => {
+      const peerUser = users.find((u) => u.email === peer.email);
+      if (!peerUser) return;
+      const requestedAt = daysAgo(7 - idx, 9 + idx, 0);
+      const status = peer.submitted
+        ? "submitted"
+        : peer.declined
+          ? "declined"
+          : "requested";
+      feedbackInserts.push({
+        recipient_id: requester.id,
+        author_id: peerUser.id,
+        source_type: "peer_request",
+        source_id: request.id,
+        prompt: plan.prompt,
+        responses: peer.submitted ?? {},
+        status,
+        requested_at: requestedAt,
+        submitted_at:
+          status === "submitted" ? daysAgo(2 - idx, 11 + idx, 0) : null,
+      });
+    });
+  }
+
+  if (feedbackInserts.length) {
+    const { error: fbErr } = await supabase
+      .from("feedback")
+      .insert(feedbackInserts);
+    if (fbErr) throw new Error(`Insert peer feedback failed: ${fbErr.message}`);
+  }
+
+  console.log(
+    `  ${insertedRequests.length} peer-aanvragen en ${feedbackInserts.length} peer-feedback rijen ingeladen.`,
   );
 }
 
