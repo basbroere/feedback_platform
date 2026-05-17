@@ -12,6 +12,10 @@ import {
   getOpenFeedbackRequestsForPeer,
 } from "@/lib/feedback/queries";
 import { getDossierForEmployee } from "@/lib/action-items/queries";
+import {
+  getUpcomingPerformanceReviewForEmployee,
+  listOpenPerformanceReviewsForManager,
+} from "@/lib/performance-reviews/queries";
 import { getHrSnapshot } from "@/lib/hr/queries";
 import { OnYourPlate } from "@/components/dashboard/on-your-plate";
 import { MetricCards } from "@/components/dashboard/metric-strip";
@@ -77,6 +81,8 @@ async function PersonView({ persona }: { persona: Persona }) {
     feedbackLast4Weeks,
     latestOneOnOne,
     teamMembers,
+    ownOpenPerformanceReview,
+    managerOpenPerformanceReviews,
   ] = await Promise.all([
     getUpcomingOneOnOneForEmployee(persona.id),
     isManager
@@ -88,6 +94,10 @@ async function PersonView({ persona }: { persona: Persona }) {
     countFeedbackReceivedSince(persona.id, fourWeeksAgoIso),
     getLatestCompletedOneOnOneForUser(persona.id, persona.role),
     isManager ? getTeamMembers(persona.id) : Promise.resolve([]),
+    getUpcomingPerformanceReviewForEmployee(persona.id),
+    isManager
+      ? listOpenPerformanceReviewsForManager(persona.id)
+      : Promise.resolve([]),
   ]);
 
   const topOpen = dossier.open.slice(0, 3);
@@ -133,6 +143,8 @@ async function PersonView({ persona }: { persona: Persona }) {
         managerUpcoming={managerUpcoming}
         feedbackRequests={feedbackRequests}
         openActionItems={topOpen}
+        ownOpenPerformanceReview={ownOpenPerformanceReview}
+        managerOpenPerformanceReviews={managerOpenPerformanceReviews}
       />
 
       {persona.role === "manager" ? <TeamPulse members={teamMembers} /> : null}

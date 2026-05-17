@@ -1,0 +1,390 @@
+import { createClient } from "@/lib/supabase/server";
+import type {
+  ActionItem,
+  PersonRef,
+  TemplateQuestion,
+} from "@/lib/one-on-ones/types";
+import { getFeedbackForEmployee } from "@/lib/feedback/queries";
+import type { FeedbackWithSource } from "@/lib/feedback/types";
+import type {
+  DossierActionItem,
+  PerformanceReviewDossier,
+  PerformanceReviewForEmployee,
+  PerformanceReviewFull,
+  PerformanceReviewListItem,
+  PerformanceReviewStatus,
+} from "./types";
+
+const PERSON_COLS = "id, name, avatar_url";
+const TEMPLATE_COLS = "id, name, questions";
+
+const SAFE_PR_COLS =
+  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, employee_self_evaluation, shared_summary";
+
+const FULL_PR_COLS =
+  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
+
+const SIX_MONTHS_DAYS = 182;
+
+type RawPerformanceReviewRow = {
+  id: string;
+  manager_id: string;
+  employee_id: string;
+  template_id: string | null;
+  status: PerformanceReviewStatus;
+  cycle_started_at: string;
+  completed_at: string | null;
+  employee_self_evaluation: Record<string, string> | null;
+  manager_preparation?: Record<string, string> | null;
+  manager_private_notes?: string | null;
+  shared_summary: string | null;
+  manager?: PersonRef | null;
+  employee?: PersonRef | null;
+  template?: { id: string; name: string; questions: TemplateQuestion[] } | null;
+};
+
+function mapFull(row: RawPerformanceReviewRow): PerformanceReviewFull {
+  return {
+    id: row.id,
+    manager_id: row.manager_id,
+    employee_id: row.employee_id,
+    template_id: row.template_id,
+    status: row.status,
+    cycle_started_at: row.cycle_started_at,
+    completed_at: row.completed_at,
+    employee_self_evaluation: row.employee_self_evaluation ?? {},
+    manager_preparation: row.manager_preparation ?? {},
+    manager_private_notes: row.manager_private_notes ?? null,
+    shared_summary: row.shared_summary,
+    manager: row.manager ?? { id: row.manager_id, name: "", avatar_url: null },
+    employee: row.employee ?? {
+      id: row.employee_id,
+      name: "",
+      avatar_url: null,
+    },
+    template: row.template
+      ? {
+          id: row.template.id,
+          name: row.template.name,
+          questions: row.template.questions ?? [],
+        }
+      : null,
+  };
+}
+
+export async function getPerformanceReviewForManager(
+  id: string,
+  managerId: string,
+): Promise<PerformanceReviewFull | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(
+      `${FULL_PR_COLS}, manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS}), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), template:templates(${TEMPLATE_COLS})`,
+    )
+    .eq("id", id)
+    .eq("manager_id", managerId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapFull(data as unknown as RawPerformanceReviewRow);
+}
+
+// Strip privé velden voor de employee-view. Type sluit ze al uit op compile-time;
+// hier verwijderen we ze ook runtime zodat ze niet per ongeluk meelekken via JSON.
+export async function getPerformanceReviewForEmployee(
+  id: string,
+  employeeId: string,
+): Promise<PerformanceReviewForEmployee | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(
+      `${SAFE_PR_COLS}, manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS}), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), template:templates(${TEMPLATE_COLS})`,
+    )
+    .eq("id", id)
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const mapped = mapFull(data as unknown as RawPerformanceReviewRow);
+  const {
+    manager_private_notes: _omitNotes,
+    manager_preparation: _omitPrep,
+    ...safe
+  } = mapped;
+  void _omitNotes;
+  void _omitPrep;
+  return safe;
+}
+
+type RawListRow = {
+  id: string;
+  status: PerformanceReviewStatus;
+  cycle_started_at: string;
+  completed_at: string | null;
+  employee_self_evaluation: Record<string, string> | null;
+  manager_preparation: Record<string, string> | null;
+  template: { name: string } | null;
+  employee: PersonRef | null;
+  manager: PersonRef | null;
+};
+
+function mapListRow(row: RawListRow): PerformanceReviewListItem | null {
+  if (!row.employee || !row.manager) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    cycle_started_at: row.cycle_started_at,
+    completed_at: row.completed_at,
+    template_name: row.template?.name ?? null,
+    has_employee_input:
+      Object.values(row.employee_self_evaluation ?? {}).some(
+        (v) => typeof v === "string" && v.trim().length > 0,
+      ) ?? false,
+    has_manager_input:
+      Object.values(row.manager_preparation ?? {}).some(
+        (v) => typeof v === "string" && v.trim().length > 0,
+      ) ?? false,
+    employee: row.employee,
+    manager: row.manager,
+  };
+}
+
+const LIST_COLS = `id, status, cycle_started_at, completed_at, employee_self_evaluation, manager_preparation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
+
+export async function listPerformanceReviewsForManager(
+  managerId: string,
+): Promise<PerformanceReviewListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("manager_id", managerId)
+    .order("cycle_started_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawListRow[])
+    .map(mapListRow)
+    .filter((r): r is PerformanceReviewListItem => r !== null);
+}
+
+export async function listPerformanceReviewsBetween(
+  managerId: string,
+  employeeId: string,
+): Promise<PerformanceReviewListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("manager_id", managerId)
+    .eq("employee_id", employeeId)
+    .order("cycle_started_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawListRow[])
+    .map(mapListRow)
+    .filter((r): r is PerformanceReviewListItem => r !== null);
+}
+
+export async function listPerformanceReviewsForEmployee(
+  employeeId: string,
+): Promise<PerformanceReviewListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("employee_id", employeeId)
+    .order("cycle_started_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawListRow[])
+    .map(mapListRow)
+    .filter((r): r is PerformanceReviewListItem => r !== null);
+}
+
+export async function getActiveActionItemsForPerformanceReview(
+  performanceReviewId: string,
+): Promise<ActionItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("action_items")
+    .select(
+      `id, owner_id, description, status, target_date, notes, source_type, source_id, created_at, completed_at, owner:users!action_items_owner_id_fkey(${PERSON_COLS})`,
+    )
+    .eq("source_type", "performance_review")
+    .eq("source_id", performanceReviewId)
+    .order("created_at", { ascending: true });
+  if (error || !data) return [];
+  return data as unknown as ActionItem[];
+}
+
+// Dossier-window van een functioneringsgesprek: 6 maanden voor cycle_started_at
+// tot completed_at, of tot nu als nog niet afgerond.
+function dossierWindow(
+  cycleStartedAt: string,
+  completedAt: string | null,
+): { startIso: string; endIso: string } {
+  const cycleStart = new Date(cycleStartedAt);
+  const start = new Date(cycleStart);
+  start.setDate(start.getDate() - SIX_MONTHS_DAYS);
+  const endIso = completedAt ?? new Date().toISOString();
+  return { startIso: start.toISOString(), endIso };
+}
+
+export async function getPerformanceReviewDossier(
+  performanceReviewId: string,
+): Promise<PerformanceReviewDossier | null> {
+  const supabase = await createClient();
+  const { data: pr, error } = await supabase
+    .from("performance_reviews")
+    .select("employee_id, cycle_started_at, completed_at")
+    .eq("id", performanceReviewId)
+    .maybeSingle();
+  if (error || !pr) return null;
+
+  const { startIso, endIso } = dossierWindow(
+    pr.cycle_started_at as string,
+    pr.completed_at as string | null,
+  );
+
+  const [completedItemsRes, feedback, oneOnOneCountRes] = await Promise.all([
+    supabase
+      .from("action_items")
+      .select(
+        `id, owner_id, description, status, target_date, notes, source_type, source_id, created_at, completed_at, owner:users!action_items_owner_id_fkey(${PERSON_COLS})`,
+      )
+      .eq("owner_id", pr.employee_id)
+      .eq("status", "completed")
+      .gte("completed_at", startIso)
+      .lte("completed_at", endIso)
+      .order("completed_at", { ascending: false }),
+    getFeedbackForEmployee(pr.employee_id as string, {
+      sinceIso: startIso,
+      untilIso: endIso,
+    }),
+    supabase
+      .from("one_on_ones")
+      .select("id", { count: "exact", head: true })
+      .eq("employee_id", pr.employee_id)
+      .not("completed_at", "is", null)
+      .gte("completed_at", startIso)
+      .lte("completed_at", endIso),
+  ]);
+
+  const items = (completedItemsRes.data ?? []) as unknown as ActionItem[];
+
+  // Verrijk actiepunten met source-info voor de UI (link terug naar 1-op-1).
+  const oneOnOneIds = Array.from(
+    new Set(
+      items
+        .filter((i) => i.source_type === "one_on_one")
+        .map((i) => i.source_id),
+    ),
+  );
+  const oneOnOneMap = new Map<
+    string,
+    { subject: string; date: string | null }
+  >();
+  if (oneOnOneIds.length) {
+    const { data: rows } = await supabase
+      .from("one_on_ones")
+      .select("id, subject, scheduled_at, completed_at")
+      .in("id", oneOnOneIds);
+    type Row = {
+      id: string;
+      subject: string;
+      scheduled_at: string | null;
+      completed_at: string | null;
+    };
+    for (const raw of (rows ?? []) as unknown as Row[]) {
+      oneOnOneMap.set(raw.id, {
+        subject: raw.subject || "1-op-1",
+        date: raw.completed_at ?? raw.scheduled_at,
+      });
+    }
+  }
+
+  const completedActionItems: DossierActionItem[] = items.map((it) => {
+    if (it.source_type === "one_on_one") {
+      const info = oneOnOneMap.get(it.source_id);
+      return {
+        ...it,
+        source_label: info?.subject ?? "1-op-1",
+        source_href: `/een-op-een/${it.source_id}`,
+        source_date: info?.date ?? null,
+      };
+    }
+    if (it.source_type === "performance_review") {
+      return {
+        ...it,
+        source_label: "Functioneringsgesprek",
+        source_href: null,
+        source_date: null,
+      };
+    }
+    return {
+      ...it,
+      source_label: "Beoordelingsgesprek",
+      source_href: null,
+      source_date: null,
+    };
+  });
+
+  return {
+    windowStart: startIso,
+    windowEnd: endIso,
+    completedActionItems,
+    receivedFeedbackCount: feedback.length,
+    oneOnOneCount: oneOnOneCountRes.count ?? 0,
+  };
+}
+
+// Helper om feedback in het dossier-window direct op te halen voor de UI.
+export async function getDossierFeedback(
+  performanceReviewId: string,
+): Promise<FeedbackWithSource[]> {
+  const supabase = await createClient();
+  const { data: pr } = await supabase
+    .from("performance_reviews")
+    .select("employee_id, cycle_started_at, completed_at")
+    .eq("id", performanceReviewId)
+    .maybeSingle();
+  if (!pr) return [];
+  const { startIso, endIso } = dossierWindow(
+    pr.cycle_started_at as string,
+    pr.completed_at as string | null,
+  );
+  return getFeedbackForEmployee(pr.employee_id as string, {
+    sinceIso: startIso,
+    untilIso: endIso,
+  });
+}
+
+export async function getUpcomingPerformanceReviewForEmployee(
+  employeeId: string,
+): Promise<PerformanceReviewListItem | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("employee_id", employeeId)
+    .neq("status", "completed")
+    .neq("status", "cancelled")
+    .order("cycle_started_at", { ascending: false })
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  return mapListRow(data[0] as unknown as RawListRow);
+}
+
+export async function listOpenPerformanceReviewsForManager(
+  managerId: string,
+): Promise<PerformanceReviewListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("manager_id", managerId)
+    .neq("status", "completed")
+    .neq("status", "cancelled")
+    .order("cycle_started_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawListRow[])
+    .map(mapListRow)
+    .filter((r): r is PerformanceReviewListItem => r !== null);
+}

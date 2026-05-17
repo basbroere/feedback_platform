@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import {
   CheckSquare,
+  ClipboardCheck,
   LayoutGrid,
   LogOut,
   MessageCircle,
@@ -26,14 +27,14 @@ type NavItem = {
   icon: LucideIcon;
 };
 
-function navItems(role: Persona["role"]): NavItem[] {
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+function navSections(role: Persona["role"]): NavSection[] {
   const home: NavItem = { href: "/dashboard", label: "Home", icon: LayoutGrid };
   const team: NavItem = { href: "/team", label: "Team", icon: UsersRound };
-  const eenOpEen: NavItem = {
-    href: "/een-op-een",
-    label: "Mijn 1-op-1's",
-    icon: MessageSquareText,
-  };
   const actiepunten: NavItem = {
     href: "/actiepunten",
     label: "Actiepunten",
@@ -44,10 +45,30 @@ function navItems(role: Persona["role"]): NavItem[] {
     label: "Feedback",
     icon: MessageCircle,
   };
-  if (role === "hr") return [home, team];
-  if (role === "manager")
-    return [home, actiepunten, feedback, team, eenOpEen];
-  return [home, actiepunten, feedback, eenOpEen];
+  const eenOpEen: NavItem = {
+    href: "/een-op-een",
+    label: "1-op-1",
+    icon: MessageSquareText,
+  };
+  const functioneringsgesprek: NavItem = {
+    href: "/functioneringsgesprek",
+    label: "Functionering",
+    icon: ClipboardCheck,
+  };
+
+  if (role === "hr") {
+    return [{ title: "Menu", items: [home, team] }];
+  }
+  if (role === "manager") {
+    return [
+      { title: "Menu", items: [home, actiepunten, feedback, team] },
+      { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
+    ];
+  }
+  return [
+    { title: "Menu", items: [home, actiepunten, feedback] },
+    { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
+  ];
 }
 
 export function AppSidebar({
@@ -58,7 +79,7 @@ export function AppSidebar({
   teams: TeamWithMembers[];
 }) {
   const pathname = usePathname();
-  const items = navItems(persona.role);
+  const sections = navSections(persona.role);
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -77,38 +98,45 @@ export function AppSidebar({
         </Link>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto px-4">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-          Menu
-        </p>
-        <ul className="space-y-1">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-[14px] font-medium transition-colors",
-                    active
-                      ? "bg-primary/8 text-primary"
-                      : "text-foreground/65 hover:bg-sidebar-accent hover:text-foreground",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-[18px] w-[18px] shrink-0",
-                      active ? "text-primary" : "text-foreground/50 group-hover:text-foreground/75",
-                    )}
-                    strokeWidth={1.75}
-                  />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4">
+        {sections.map((section) => (
+          <div key={section.title}>
+            <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              {section.title}
+            </p>
+            <ul className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  pathname === item.href || pathname?.startsWith(`${item.href}/`);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-[14px] font-medium transition-colors",
+                        active
+                          ? "bg-primary/8 text-primary"
+                          : "text-foreground/65 hover:bg-sidebar-accent hover:text-foreground",
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-[18px] w-[18px] shrink-0",
+                          active
+                            ? "text-primary"
+                            : "text-foreground/50 group-hover:text-foreground/75",
+                        )}
+                        strokeWidth={1.75}
+                      />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
 
       <div className="space-y-3 border-t border-sidebar-border/80 px-4 py-4">

@@ -116,7 +116,7 @@ export function FeedbackView({
   );
 }
 
-function FeedbackRow({ item }: { item: FeedbackWithSource }) {
+export function FeedbackRow({ item }: { item: FeedbackWithSource }) {
   const author = item.author;
   const dateLabel = item.submitted_at ?? item.created_at;
   return (

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CalendarClock,
   CheckSquare,
+  ClipboardCheck,
   MessageCircle,
   Sparkles,
   UsersRound,
@@ -11,28 +12,39 @@ import type { OneOnOneListItem } from "@/lib/one-on-ones/types";
 import type { ManagerUpcomingOneOnOne } from "@/lib/one-on-ones/queries";
 import type { OpenFeedbackRequestForPeer } from "@/lib/feedback/types";
 import type { DossierItem } from "@/lib/action-items/queries";
+import type { PerformanceReviewListItem } from "@/lib/performance-reviews/types";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
-import { formatDateTime, formatRelativeWeeks } from "@/lib/format";
+import { formatDate, formatDateTime, formatRelativeWeeks } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type Tone = "blue" | "primary" | "emerald" | "violet";
+type Tone = "blue" | "primary" | "emerald" | "violet" | "amber";
 
 export function OnYourPlate({
   upcoming,
   managerUpcoming,
   feedbackRequests,
   openActionItems,
+  ownOpenPerformanceReview,
+  managerOpenPerformanceReviews,
 }: {
   upcoming: OneOnOneListItem | null;
   managerUpcoming: ManagerUpcomingOneOnOne[];
   feedbackRequests: OpenFeedbackRequestForPeer[];
   openActionItems: DossierItem[];
+  ownOpenPerformanceReview: PerformanceReviewListItem | null;
+  managerOpenPerformanceReviews: PerformanceReviewListItem[];
 }) {
+  const ownPrToShow =
+    ownOpenPerformanceReview && !ownOpenPerformanceReview.has_employee_input
+      ? ownOpenPerformanceReview
+      : null;
   const hasAny =
     upcoming ||
     managerUpcoming.length > 0 ||
     feedbackRequests.length > 0 ||
-    openActionItems.length > 0;
+    openActionItems.length > 0 ||
+    ownPrToShow ||
+    managerOpenPerformanceReviews.length > 0;
 
   return (
     <section className="space-y-3">
@@ -55,6 +67,10 @@ export function OnYourPlate({
         </div>
       ) : (
         <ul className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          {ownPrToShow ? <OwnPerformanceReviewRow review={ownPrToShow} /> : null}
+          {managerOpenPerformanceReviews.map((r) => (
+            <ManagerPerformanceReviewRow key={r.id} review={r} />
+          ))}
           {upcoming ? <UpcomingRow upcoming={upcoming} /> : null}
           {managerUpcoming.map((m) => (
             <ManagerUpcomingRow key={m.id} item={m} />
@@ -122,7 +138,63 @@ const TONE: Record<Tone, string> = {
     "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
   violet:
     "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300",
+  amber:
+    "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
 };
+
+function OwnPerformanceReviewRow({
+  review,
+}: {
+  review: PerformanceReviewListItem;
+}) {
+  return (
+    <Row
+      icon={ClipboardCheck}
+      tone="amber"
+      title={review.template_name ?? "Functioneringsgesprek"}
+      meta={`Met ${review.manager.name} · gestart op ${formatDate(review.cycle_started_at)}`}
+      cta="Zelfevaluatie"
+      href={`/functioneringsgesprek/${review.id}/voorbereiden`}
+    />
+  );
+}
+
+function ManagerPerformanceReviewRow({
+  review,
+}: {
+  review: PerformanceReviewListItem;
+}) {
+  const inputStatus = review.has_employee_input
+    ? "zelfevaluatie ingevuld"
+    : "zelfevaluatie nog leeg";
+  return (
+    <Row
+      icon={ClipboardCheck}
+      tone="amber"
+      leading={
+        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+          <PersonAvatar
+            id={review.employee.id}
+            name={review.employee.name}
+            avatarUrl={review.employee.avatar_url}
+          />
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-card bg-amber-100 text-amber-600 dark:border-card dark:bg-amber-950/60 dark:text-amber-200">
+            <ClipboardCheck className="h-2.5 w-2.5" strokeWidth={2} />
+          </span>
+        </span>
+      }
+      title={
+        <span>
+          Functioneringsgesprek met{" "}
+          <span className="font-semibold">{review.employee.name}</span>
+        </span>
+      }
+      meta={`Als manager · ${inputStatus}`}
+      cta="Openen"
+      href={`/functioneringsgesprek/${review.id}`}
+    />
+  );
+}
 
 function UpcomingRow({ upcoming }: { upcoming: OneOnOneListItem }) {
   return (
