@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createOneOnOne } from "@/lib/one-on-ones/actions";
+import type { PersonRef } from "@/lib/one-on-ones/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -51,23 +52,45 @@ function defaultScheduledAt(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function ScheduleDialog({
-  employeeId,
-  employeeName,
-  triggerLabel = "Nieuwe 1-op-1",
-  triggerVariant = "outline",
-}: {
-  employeeId: string;
-  employeeName: string;
-  triggerLabel?: string;
-  triggerVariant?: "default" | "outline" | "secondary" | "ghost";
-}) {
+type Props =
+  | {
+      employeeId: string;
+      employeeName: string;
+      teamMembers?: undefined;
+      triggerLabel?: string;
+      triggerVariant?: "default" | "outline" | "secondary" | "ghost";
+    }
+  | {
+      employeeId?: undefined;
+      employeeName?: undefined;
+      teamMembers: PersonRef[];
+      triggerLabel?: string;
+      triggerVariant?: "default" | "outline" | "secondary" | "ghost";
+    };
+
+export function ScheduleDialog(props: Props) {
+  const {
+    employeeId: fixedEmployeeId,
+    employeeName: fixedEmployeeName,
+    teamMembers,
+    triggerLabel = "Nieuwe 1-op-1",
+    triggerVariant = "outline",
+  } = props;
+
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
+    fixedEmployeeId ?? teamMembers?.[0]?.id ?? "",
+  );
   const [value, setValue] = useState(defaultScheduledAt());
   const [recurrence, setRecurrence] = useState<RecurrenceOption>("biweekly");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const targetName =
+    fixedEmployeeName ??
+    teamMembers?.find((m) => m.id === selectedEmployeeId)?.name ??
+    "een teamlid";
 
   const lastOccurrenceLabel = useMemo(() => {
     if (recurrence === "once" || !value) return null;
@@ -81,6 +104,11 @@ export function ScheduleDialog({
 
   function submit() {
     setError(null);
+    const employeeId = fixedEmployeeId ?? selectedEmployeeId;
+    if (!employeeId) {
+      setError("Kies een teamlid.");
+      return;
+    }
     if (!value) {
       setError("Kies een datum en tijd.");
       return;
@@ -118,13 +146,42 @@ export function ScheduleDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nieuwe 1-op-1 met {employeeName}</DialogTitle>
+          <DialogTitle>
+            {fixedEmployeeName
+              ? `Nieuwe 1-op-1 met ${fixedEmployeeName}`
+              : "Nieuwe 1-op-1"}
+          </DialogTitle>
           <DialogDescription>
-            Kies een datum en tijd. {employeeName} krijgt de mogelijkheid om
-            zich voor te bereiden.
+            {fixedEmployeeName
+              ? `Kies een datum en tijd. ${fixedEmployeeName} krijgt de mogelijkheid om zich voor te bereiden.`
+              : "Kies een teamlid en een moment. Het teamlid krijgt de mogelijkheid om zich voor te bereiden."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
+          {!fixedEmployeeId && teamMembers ? (
+            <div className="grid gap-2">
+              <Label htmlFor="employee">Teamlid</Label>
+              {teamMembers.length === 0 ? (
+                <p className="text-[12.5px] text-muted-foreground">
+                  Je hebt nog geen teamleden.
+                </p>
+              ) : (
+                <select
+                  id="employee"
+                  value={selectedEmployeeId}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : null}
+
           <div className="grid gap-2">
             <Label htmlFor="scheduled_at">Datum en tijd</Label>
             <Input
@@ -161,6 +218,12 @@ export function ScheduleDialog({
               </p>
             ) : null}
           </div>
+
+          {!fixedEmployeeName && selectedEmployeeId ? (
+            <p className="text-[12.5px] text-muted-foreground">
+              {targetName} krijgt na opslaan de uitnodiging om voor te bereiden.
+            </p>
+          ) : null}
 
           {error ? (
             <p className="text-sm text-destructive">{error}</p>

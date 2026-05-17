@@ -183,6 +183,34 @@ export async function getUpcomingOneOnOnesForManager(
     }));
 }
 
+export async function getRecentCompletedOneOnOnesForManager(
+  managerId: string,
+  limit = 20,
+): Promise<ManagerUpcomingOneOnOne[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("one_on_ones")
+    .select(
+      `id, subject, scheduled_at, completed_at, shared_summary, employee:users!one_on_ones_employee_id_fkey(${PERSON_COLS})`,
+    )
+    .eq("manager_id", managerId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  type Row = OneOnOneListItem & { employee: PersonRef | null };
+  return (data as unknown as Row[])
+    .filter((r): r is Row & { employee: PersonRef } => !!r.employee)
+    .map((r) => ({
+      id: r.id,
+      subject: r.subject,
+      scheduled_at: r.scheduled_at,
+      completed_at: r.completed_at,
+      shared_summary: r.shared_summary,
+      employee: r.employee,
+    }));
+}
+
 export async function getLatestCompletedOneOnOneForUser(
   userId: string,
   role: "employee" | "manager" | "hr",

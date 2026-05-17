@@ -14,13 +14,21 @@ const FEEDBACK_COLS = `id, recipient_id, author_id, source_type, source_id, prom
 
 export async function getFeedbackForEmployee(
   employeeId: string,
+  options?: { sinceIso?: string; untilIso?: string },
 ): Promise<FeedbackWithSource[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("feedback")
     .select(FEEDBACK_COLS)
     .eq("recipient_id", employeeId)
-    .eq("status", "submitted")
+    .eq("status", "submitted");
+  if (options?.sinceIso) {
+    query = query.gte("submitted_at", options.sinceIso);
+  }
+  if (options?.untilIso) {
+    query = query.lte("submitted_at", options.untilIso);
+  }
+  const { data, error } = await query
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (error || !data) return [];
