@@ -179,6 +179,16 @@ function PreparationActionItems({
               >
                 {item.description}
               </p>
+              {item.notes ? (
+                <p
+                  className={cn(
+                    "mt-1 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground",
+                    completed && "line-through",
+                  )}
+                >
+                  {item.notes}
+                </p>
+              ) : null}
             </div>
           </li>
         );

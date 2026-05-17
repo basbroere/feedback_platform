@@ -12,6 +12,7 @@ export type TemplateQuestion = {
   kind: TemplateQuestionKind;
   options?: string[];
   required?: boolean;
+  hint?: string;
 };
 
 export type OneOnOneTemplate = {
@@ -48,9 +49,13 @@ export type OneOnOneFull = {
   manager: PersonRef;
   employee: PersonRef;
   template: OneOnOneTemplate | null;
+  existing_manager_feedback: string | null;
 };
 
-export type OneOnOneForEmployee = Omit<OneOnOneFull, "manager_private_notes">;
+export type OneOnOneForEmployee = Omit<
+  OneOnOneFull,
+  "manager_private_notes" | "existing_manager_feedback"
+>;
 
 export type ActionItem = {
   id: string;

@@ -117,6 +117,16 @@ function ActionItemRow({
         >
           {item.description}
         </p>
+        {item.notes ? (
+          <p
+            className={cn(
+              "mt-1 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground",
+              completed && "line-through",
+            )}
+          >
+            {item.notes}
+          </p>
+        ) : null}
         {showOwner && item.owner ? (
           <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground">
             <PersonAvatar

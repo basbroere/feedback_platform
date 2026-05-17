@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import {
-  ClipboardList,
+  CheckSquare,
   LayoutGrid,
   LogOut,
+  MessageCircle,
   MessageSquareText,
   Settings,
   UsersRound,
@@ -33,14 +34,20 @@ function navItems(role: Persona["role"]): NavItem[] {
     label: "Mijn 1-op-1's",
     icon: MessageSquareText,
   };
-  const dossier: NavItem = {
-    href: "/dossier",
-    label: "Dossier",
-    icon: ClipboardList,
+  const actiepunten: NavItem = {
+    href: "/actiepunten",
+    label: "Actiepunten",
+    icon: CheckSquare,
+  };
+  const feedback: NavItem = {
+    href: "/feedback",
+    label: "Feedback",
+    icon: MessageCircle,
   };
   if (role === "hr") return [home, team];
-  if (role === "manager") return [home, team, eenOpEen, dossier];
-  return [home, eenOpEen, dossier];
+  if (role === "manager")
+    return [home, actiepunten, feedback, team, eenOpEen];
+  return [home, actiepunten, feedback, eenOpEen];
 }
 
 export function AppSidebar({

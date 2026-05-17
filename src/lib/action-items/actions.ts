@@ -44,18 +44,20 @@ export async function updateActionItemStatus(input: {
   revalidatePath("/een-op-een");
   revalidatePath("/team");
   revalidatePath("/dashboard");
-  revalidatePath("/dossier");
+  revalidatePath("/actiepunten");
 }
 
 export async function createActionItemForOneOnOne(input: {
   oneOnOneId: string;
   description: string;
+  notes?: string | null;
 }): Promise<{ id: string }> {
   const personaId = await getCurrentPersonaId();
   if (!personaId) throw new Error("Geen persona geselecteerd");
 
   const description = input.description.trim();
-  if (!description) throw new Error("Beschrijving is leeg");
+  if (!description) throw new Error("Titel is leeg");
+  const notes = input.notes?.trim() ? input.notes.trim() : null;
 
   const supabase = await createClient();
   const { data: one, error: oneErr } = await supabase
@@ -73,6 +75,7 @@ export async function createActionItemForOneOnOne(input: {
     .insert({
       owner_id: one.employee_id,
       description,
+      notes,
       status: "open" as const,
       source_type: "one_on_one" as const,
       source_id: one.id,

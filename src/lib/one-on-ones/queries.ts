@@ -35,7 +35,10 @@ type RawOneOnOneRow = {
   template?: { id: string; name: string; questions: TemplateQuestion[] } | null;
 };
 
-function mapFull(row: RawOneOnOneRow): OneOnOneFull {
+function mapFull(
+  row: RawOneOnOneRow,
+  existingManagerFeedback: string | null = null,
+): OneOnOneFull {
   return {
     id: row.id,
     manager_id: row.manager_id,
@@ -60,6 +63,7 @@ function mapFull(row: RawOneOnOneRow): OneOnOneFull {
           questions: row.template.questions ?? [],
         }
       : null,
+    existing_manager_feedback: existingManagerFeedback,
   };
 }
 
@@ -92,7 +96,16 @@ export async function getOneOnOneForManager(
     .eq("manager_id", managerId)
     .maybeSingle();
   if (error || !data) return null;
-  return mapFull(data as unknown as RawOneOnOneRow);
+
+  const { data: fb } = await supabase
+    .from("feedback")
+    .select("body")
+    .eq("source_type", "one_on_one")
+    .eq("source_id", id)
+    .eq("author_id", managerId)
+    .maybeSingle();
+
+  return mapFull(data as unknown as RawOneOnOneRow, fb?.body ?? null);
 }
 
 // Bewust geen manager_private_notes in de select. Het type sluit het ook uit
@@ -112,9 +125,14 @@ export async function getOneOnOneForEmployee(
     .maybeSingle();
   if (error || !data) return null;
   const mapped = mapFull(data as unknown as RawOneOnOneRow);
-  // Strip private notes uit het object voor zekerheid; type-wise al uitgesloten.
-  const { manager_private_notes: _omit, ...safe } = mapped;
-  void _omit;
+  // Strip private notes en manager-feedback uit het object; type-wise al uitgesloten.
+  const {
+    manager_private_notes: _omitNotes,
+    existing_manager_feedback: _omitFb,
+    ...safe
+  } = mapped;
+  void _omitNotes;
+  void _omitFb;
   return safe;
 }
 
@@ -131,6 +149,57 @@ export async function getUpcomingOneOnOneForEmployee(
     .limit(1);
   if (error || !data || data.length === 0) return null;
   return data[0] as OneOnOneListItem;
+}
+
+export type ManagerUpcomingOneOnOne = OneOnOneListItem & {
+  employee: PersonRef;
+};
+
+export async function getUpcomingOneOnOnesForManager(
+  managerId: string,
+  limit = 3,
+): Promise<ManagerUpcomingOneOnOne[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("one_on_ones")
+    .select(
+      `id, subject, scheduled_at, completed_at, shared_summary, employee:users!one_on_ones_employee_id_fkey(${PERSON_COLS})`,
+    )
+    .eq("manager_id", managerId)
+    .is("completed_at", null)
+    .order("scheduled_at", { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+  type Row = OneOnOneListItem & { employee: PersonRef | null };
+  return (data as unknown as Row[])
+    .filter((r): r is Row & { employee: PersonRef } => !!r.employee)
+    .map((r) => ({
+      id: r.id,
+      subject: r.subject,
+      scheduled_at: r.scheduled_at,
+      completed_at: r.completed_at,
+      shared_summary: r.shared_summary,
+      employee: r.employee,
+    }));
+}
+
+export async function getLatestCompletedOneOnOneForUser(
+  userId: string,
+  role: "employee" | "manager" | "hr",
+): Promise<{ id: string; completed_at: string } | null> {
+  if (role === "hr") return null;
+  const supabase = await createClient();
+  const column = role === "manager" ? "manager_id" : "employee_id";
+  const { data, error } = await supabase
+    .from("one_on_ones")
+    .select("id, completed_at")
+    .eq(column, userId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
+  return { id: row.id, completed_at: row.completed_at as string };
 }
 
 export async function getLastCompletedOneOnOneForPair(
