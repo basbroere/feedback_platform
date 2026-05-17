@@ -2,6 +2,8 @@
 
 Werkinstructie voor Claude Code in deze repository. Dit bestand wordt automatisch ingelezen bij elke sessie. Houd je hieraan.
 
+> **Tip voor Claude:** voor de **huidige bouwstatus** (welke routes, tabellen en flows er al staan, en wat er nog niet is), lees eerst `docs/functionele-context.md`. Dit CLAUDE.md beschrijft de visie en het ontwerp; de functionele context beschrijft de realiteit van vandaag.
+
 ---
 
 ## Over dit project
