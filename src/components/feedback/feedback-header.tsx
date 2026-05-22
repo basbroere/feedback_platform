@@ -1,39 +1,52 @@
+import { Clock, MessageCircle, Sparkles } from "lucide-react";
+import { PageTitle } from "@/components/ui/page-title";
+import { MetricCards, type MetricCard } from "@/components/dashboard/metric-strip";
+
 export function FeedbackHeader({
   totalReceived,
   crossTeamCount,
+  latestDate,
 }: {
   totalReceived: number;
   crossTeamCount: number;
+  latestDate: string | null;
 }) {
-  return (
-    <div className="space-y-4">
-      <header className="space-y-1.5">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-          Feedback
-        </h1>
-        <p className="text-[14px] text-muted-foreground">
-          Wat collega&apos;s en je manager je teruggeven, op één plek.
-        </p>
-      </header>
+  const metrics: MetricCard[] = [
+    {
+      value: totalReceived,
+      label: "ontvangen",
+      icon: MessageCircle,
+      tone: "primary",
+    },
+    {
+      value: crossTeamCount,
+      label: "cross-team",
+      icon: Sparkles,
+      tone: "violet",
+    },
+    {
+      value: recencyShort(latestDate),
+      label: "laatste feedback",
+      icon: Clock,
+      tone: "blue",
+    },
+  ];
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
-        <Metric value={totalReceived} label="ontvangen" />
-        <span aria-hidden className="text-muted-foreground/40">
-          ·
-        </span>
-        <Metric value={crossTeamCount} label="van buiten je team" />
-      </div>
+  return (
+    <div className="space-y-5">
+      <PageTitle icon={MessageCircle} tone="primary" title="Feedback" />
+      <MetricCards metrics={metrics} />
     </div>
   );
 }
 
-function Metric({ value, label }: { value: number; label: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-1.5">
-      <span className="text-[16px] font-semibold text-foreground tabular-nums">
-        {value}
-      </span>
-      <span>{label}</span>
-    </span>
-  );
+function recencyShort(date: string | null): string {
+  if (!date) return "–";
+  const days = Math.round((Date.now() - new Date(date).getTime()) / 86400000);
+  if (days <= 0) return "vandaag";
+  if (days === 1) return "gisteren";
+  if (days < 7) return `${days}d`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks}w`;
+  return `${Math.round(days / 30)}mnd`;
 }

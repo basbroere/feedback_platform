@@ -6,7 +6,6 @@ import type {
   FeedbackTemplate,
   FeedbackWithSource,
   OpenFeedbackRequestForPeer,
-  OwnFeedbackRequestSummary,
 } from "./types";
 
 const PERSON_COLS = "id, name, avatar_url";
@@ -77,6 +76,19 @@ export async function getFeedbackForEmployee(
         .map((f) => f.source_id as string),
     ),
   );
+  const performanceReviewIds = Array.from(
+    new Set(
+      items
+        .filter((f) => f.source_type === "performance_review" && f.source_id)
+        .map((f) => f.source_id as string),
+    ),
+  );
+
+  type TemplateRow = {
+    id: string;
+    name: string;
+    questions: TemplateQuestion[];
+  };
 
   const peerRequestById = new Map<
     string,
@@ -90,15 +102,34 @@ export async function getFeedbackForEmployee(
     type Row = {
       id: string;
       prompt: string | null;
-      template: {
-        id: string;
-        name: string;
-        questions: TemplateQuestion[];
-      } | null;
+      template: TemplateRow | null;
     };
     for (const raw of (requestRows ?? []) as unknown as Row[]) {
       peerRequestById.set(raw.id, {
         prompt: raw.prompt,
+        template: raw.template
+          ? {
+              id: raw.template.id,
+              name: raw.template.name,
+              questions: raw.template.questions ?? [],
+            }
+          : null,
+      });
+    }
+  }
+
+  const performanceReviewById = new Map<
+    string,
+    { template: FeedbackTemplate | null }
+  >();
+  if (performanceReviewIds.length) {
+    const { data: prRows } = await supabase
+      .from("performance_reviews")
+      .select(`id, template:templates(id, name, questions)`)
+      .in("id", performanceReviewIds);
+    type Row = { id: string; template: TemplateRow | null };
+    for (const raw of (prRows ?? []) as unknown as Row[]) {
+      performanceReviewById.set(raw.id, {
         template: raw.template
           ? {
               id: raw.template.id,
@@ -132,9 +163,11 @@ export async function getFeedbackForEmployee(
         with: null,
       };
     } else if (f.source_type === "performance_review") {
+      const pr = f.source_id ? performanceReviewById.get(f.source_id) : null;
+      templateQuestions = pr?.template?.questions;
       source = {
         kind: "performance_review",
-        label: "Functioneringsgesprek",
+        label: pr?.template?.name ?? "Functioneringsgesprek",
         href: null,
         date: null,
         with: null,
@@ -151,16 +184,17 @@ export async function getOpenFeedbackRequestsForPeer(
   const { data, error } = await supabase
     .from("feedback")
     .select(
-      `id, source_id, requested_at, created_at, is_cross_team, recipient:users!feedback_recipient_id_fkey(${PERSON_COLS})`,
+      `id, source_type, source_id, requested_at, created_at, is_cross_team, recipient:users!feedback_recipient_id_fkey(${PERSON_COLS})`,
     )
     .eq("author_id", peerId)
-    .eq("source_type", "peer_request")
+    .in("source_type", ["peer_request", "performance_review"])
     .eq("status", "requested")
     .order("created_at", { ascending: false });
   if (error || !data) return [];
 
   type Row = {
     id: string;
+    source_type: "peer_request" | "performance_review";
     source_id: string | null;
     requested_at: string | null;
     created_at: string;
@@ -169,26 +203,42 @@ export async function getOpenFeedbackRequestsForPeer(
   };
   const rows = data as unknown as Row[];
 
-  const requestIds = Array.from(
-    new Set(rows.map((r) => r.source_id).filter((v): v is string => !!v)),
+  type TemplateRow = {
+    id: string;
+    name: string;
+    questions: TemplateQuestion[];
+  };
+
+  const peerRequestIds = Array.from(
+    new Set(
+      rows
+        .filter((r) => r.source_type === "peer_request")
+        .map((r) => r.source_id)
+        .filter((v): v is string => !!v),
+    ),
   );
+  const perfReviewIds = Array.from(
+    new Set(
+      rows
+        .filter((r) => r.source_type === "performance_review")
+        .map((r) => r.source_id)
+        .filter((v): v is string => !!v),
+    ),
+  );
+
   const requestMap = new Map<
     string,
     { prompt: string | null; template: FeedbackTemplate | null }
   >();
-  if (requestIds.length) {
+  if (peerRequestIds.length) {
     const { data: reqs } = await supabase
       .from("feedback_requests")
       .select(`id, prompt, template:templates(id, name, questions)`)
-      .in("id", requestIds);
+      .in("id", peerRequestIds);
     type ReqRow = {
       id: string;
       prompt: string | null;
-      template: {
-        id: string;
-        name: string;
-        questions: TemplateQuestion[];
-      } | null;
+      template: TemplateRow | null;
     };
     for (const r of (reqs ?? []) as unknown as ReqRow[]) {
       requestMap.set(r.id, {
@@ -204,70 +254,48 @@ export async function getOpenFeedbackRequestsForPeer(
     }
   }
 
+  const perfMap = new Map<string, { template: FeedbackTemplate | null }>();
+  if (perfReviewIds.length) {
+    const { data: prs } = await supabase
+      .from("performance_reviews")
+      .select(`id, template:templates(id, name, questions)`)
+      .in("id", perfReviewIds);
+    type PrRow = { id: string; template: TemplateRow | null };
+    for (const r of (prs ?? []) as unknown as PrRow[]) {
+      perfMap.set(r.id, {
+        template: r.template
+          ? {
+              id: r.template.id,
+              name: r.template.name,
+              questions: r.template.questions ?? [],
+            }
+          : null,
+      });
+    }
+  }
+
   return rows
     .filter((r) => r.recipient && r.source_id)
     .map((r) => {
-      const req = requestMap.get(r.source_id as string) ?? null;
+      const sourceId = r.source_id as string;
+      const fromMap =
+        r.source_type === "performance_review"
+          ? { prompt: null as string | null, template: perfMap.get(sourceId)?.template ?? null }
+          : {
+              prompt: requestMap.get(sourceId)?.prompt ?? null,
+              template: requestMap.get(sourceId)?.template ?? null,
+            };
       return {
         feedback_id: r.id,
-        request_id: r.source_id as string,
+        request_id: sourceId,
         requester: r.recipient as PersonRef,
-        prompt: req?.prompt ?? null,
-        template: req?.template ?? null,
+        prompt: fromMap.prompt,
+        template: fromMap.template,
         requested_at: r.requested_at,
         created_at: r.created_at,
         is_cross_team: r.is_cross_team,
       };
     });
-}
-
-export async function getOwnOpenRequestSummary(
-  requesterId: string,
-): Promise<OwnFeedbackRequestSummary[]> {
-  const supabase = await createClient();
-  const { data: requests, error: reqErr } = await supabase
-    .from("feedback_requests")
-    .select(`id, prompt, created_at, template:templates(name)`)
-    .eq("requester_id", requesterId)
-    .order("created_at", { ascending: false });
-  if (reqErr || !requests) return [];
-
-  type ReqRow = {
-    id: string;
-    prompt: string | null;
-    created_at: string;
-    template: { name: string } | null;
-  };
-  const reqRows = requests as unknown as ReqRow[];
-  if (reqRows.length === 0) return [];
-
-  const ids = reqRows.map((r) => r.id);
-  const { data: feedbacks } = await supabase
-    .from("feedback")
-    .select("source_id, status")
-    .eq("source_type", "peer_request")
-    .in("source_id", ids);
-
-  type FbRow = { source_id: string; status: string };
-  const byRequest = new Map<string, FbRow[]>();
-  for (const row of (feedbacks ?? []) as unknown as FbRow[]) {
-    const list = byRequest.get(row.source_id) ?? [];
-    list.push(row);
-    byRequest.set(row.source_id, list);
-  }
-
-  return reqRows.map((r) => {
-    const list = byRequest.get(r.id) ?? [];
-    return {
-      request_id: r.id,
-      prompt: r.prompt,
-      template_name: r.template?.name ?? null,
-      created_at: r.created_at,
-      peer_count: list.length,
-      submitted_count: list.filter((f) => f.status === "submitted").length,
-      declined_count: list.filter((f) => f.status === "declined").length,
-    };
-  });
 }
 
 export async function getFeedbackRequestDetailForPeer(
@@ -278,6 +306,7 @@ export async function getFeedbackRequestDetailForPeer(
   requester: PersonRef;
   prompt: string | null;
   template: FeedbackTemplate | null;
+  source_kind: "peer_request" | "performance_review";
 } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -287,13 +316,42 @@ export async function getFeedbackRequestDetailForPeer(
     )
     .eq("id", feedbackId)
     .eq("author_id", peerId)
-    .eq("source_type", "peer_request")
+    .in("source_type", ["peer_request", "performance_review"])
     .maybeSingle();
   if (error || !data) return null;
 
   type Row = Feedback & { recipient: PersonRef | null };
   const row = data as unknown as Row;
   if (!row.recipient || !row.source_id) return null;
+
+  type TemplateRow = {
+    id: string;
+    name: string;
+    questions: TemplateQuestion[];
+  };
+
+  if (row.source_type === "performance_review") {
+    const { data: pr } = await supabase
+      .from("performance_reviews")
+      .select(`id, template:templates(id, name, questions)`)
+      .eq("id", row.source_id)
+      .maybeSingle();
+    type PrRow = { id: string; template: TemplateRow | null };
+    const prRow = pr as unknown as PrRow | null;
+    return {
+      feedback: row,
+      requester: row.recipient,
+      prompt: null,
+      template: prRow?.template
+        ? {
+            id: prRow.template.id,
+            name: prRow.template.name,
+            questions: prRow.template.questions ?? [],
+          }
+        : null,
+      source_kind: "performance_review",
+    };
+  }
 
   const { data: req } = await supabase
     .from("feedback_requests")
@@ -303,11 +361,7 @@ export async function getFeedbackRequestDetailForPeer(
   type ReqRow = {
     id: string;
     prompt: string | null;
-    template: {
-      id: string;
-      name: string;
-      questions: TemplateQuestion[];
-    } | null;
+    template: TemplateRow | null;
   };
   const reqRow = req as unknown as ReqRow | null;
 
@@ -322,6 +376,7 @@ export async function getFeedbackRequestDetailForPeer(
           questions: reqRow.template.questions ?? [],
         }
       : null,
+    source_kind: "peer_request",
   };
 }
 
@@ -337,22 +392,6 @@ export async function countFeedbackReceivedSince(
     .eq("status", "submitted")
     .gte("submitted_at", sinceIso);
   return count ?? 0;
-}
-
-export async function listPeerFeedbackTemplates(): Promise<FeedbackTemplate[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("templates")
-    .select("id, name, questions")
-    .eq("type", "peer_360")
-    .eq("is_active", true)
-    .order("name");
-  if (error || !data) return [];
-  return data.map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    questions: (row.questions ?? []) as TemplateQuestion[],
-  }));
 }
 
 export async function getManagerFeedbackForOneOnOne(

@@ -96,7 +96,7 @@
 
   --radius: 0.75rem;
 
-  --sidebar: oklch(0.984 0.003 250);
+  --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.18 0.01 260);
   --sidebar-primary: var(--bambelo);
   --sidebar-primary-foreground: var(--bambelo-foreground);

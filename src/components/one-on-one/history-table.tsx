@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ChevronRight, CalendarClock, CircleCheck } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { ArrowRight, CircleCheck, CalendarClock } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { OneOnOneListItem } from "@/lib/one-on-ones/types";
+import { cn } from "@/lib/utils";
 
 export function HistoryTable({
   items,
@@ -19,42 +20,73 @@ export function HistoryTable({
   }
 
   return (
-    <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
-      {items.map((item) => {
-        const completed = Boolean(item.completed_at);
-        const Icon = completed ? CircleCheck : CalendarClock;
-        return (
-          <li key={item.id}>
-            <Link
-              href={`/een-op-een/${item.id}`}
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40"
-            >
-              <span
-                className={
-                  completed
-                    ? "flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    : "flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
-                }
+    <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+              Datum
+            </th>
+            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+              Onderwerp
+            </th>
+            <th className="hidden sm:table-cell px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+              Status
+            </th>
+            <th className="px-6 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => {
+            const completed = Boolean(item.completed_at);
+            return (
+              <tr
+                key={item.id}
+                className={cn(
+                  "group border-b border-border/50 last:border-b-0 transition-colors hover:bg-accent/40",
+                  i % 2 === 1 && "bg-muted/30",
+                )}
               >
-                <Icon className="h-4 w-4" strokeWidth={1.75} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-medium tracking-tight">
-                  {item.subject}
-                </p>
-                <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                  {formatDateTime(item.scheduled_at) || "Nog geen datum"}
-                  {` · ${completed ? "Afgerond" : "Gepland"}`}
-                  {item.shared_summary
-                    ? ` · ${item.shared_summary.slice(0, 90)}${item.shared_summary.length > 90 ? "..." : ""}`
-                    : ""}
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+                <td className="px-6 py-3.5 text-[13px] text-muted-foreground whitespace-nowrap">
+                  {formatDate(item.scheduled_at)}
+                </td>
+                <td className="px-4 py-3.5">
+                  <span className="text-[13.5px] font-medium">
+                    {item.subject || "1-op-1"}
+                  </span>
+                  {item.shared_summary ? (
+                    <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground max-w-[320px]">
+                      {item.shared_summary}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="hidden sm:table-cell px-4 py-3.5">
+                  {completed ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CircleCheck className="h-3 w-3" strokeWidth={2} />
+                      Afgerond
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                      <CalendarClock className="h-3 w-3" strokeWidth={1.75} />
+                      Gepland
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-3.5 text-right">
+                  <Link
+                    href={`/een-op-een/${item.id}`}
+                    className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground/50 transition-colors group-hover:text-primary"
+                  >
+                    Open
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -454,7 +454,7 @@ function DraftActionItem({
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
+    <div className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
       <span
         aria-hidden
         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background"
@@ -588,7 +588,7 @@ function ActionItemEditRow({
   return (
     <li
       className={cn(
-        "flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3",
+        "flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm",
         (completed || expired) && "opacity-70",
       )}
     >

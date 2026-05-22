@@ -23,16 +23,18 @@ export default async function OneOnOneDetail({
   // Eerst proberen als manager. Dan als medewerker.
   const managerView = await getOneOnOneForManager(id, persona.id);
   if (managerView) {
-    const template = managerView.template_id
-      ? await getTemplateById(managerView.template_id)
-      : null;
+    const [template, itemsFromThis, activeFromOtherSessions] = await Promise.all([
+      managerView.template_id
+        ? getTemplateById(managerView.template_id)
+        : Promise.resolve(null),
+      getActionItemsBySource("one_on_one", managerView.id),
+      getActiveActionItemsForEmployeeWithManager(
+        managerView.employee_id,
+        managerView.manager_id,
+      ),
+    ]);
     const questions = managerView.template?.questions ?? template?.questions ?? [];
 
-    const itemsFromThis = await getActionItemsBySource("one_on_one", managerView.id);
-    const activeFromOtherSessions = await getActiveActionItemsForEmployeeWithManager(
-      managerView.employee_id,
-      managerView.manager_id,
-    );
     // Vorige = open + recent voltooid uit eerdere 1-op-1's (niet deze).
     const previous = activeFromOtherSessions.filter(
       (it) => it.source_id !== managerView.id,
@@ -61,11 +63,13 @@ export default async function OneOnOneDetail({
   const employeeView = await getOneOnOneForEmployee(id, persona.id);
   if (!employeeView) notFound();
 
-  const template = employeeView.template_id
-    ? await getTemplateById(employeeView.template_id)
-    : null;
+  const [template, actionItems] = await Promise.all([
+    employeeView.template_id
+      ? getTemplateById(employeeView.template_id)
+      : Promise.resolve(null),
+    getActionItemsBySource("one_on_one", employeeView.id),
+  ]);
   const questions = employeeView.template?.questions ?? template?.questions ?? [];
-  const actionItems = await getActionItemsBySource("one_on_one", employeeView.id);
 
   return (
     <div className="space-y-6">

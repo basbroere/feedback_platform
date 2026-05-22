@@ -1,33 +1,53 @@
+import type { LucideIcon } from "lucide-react";
+import { TONE_BG, type Tone } from "@/lib/ui/tone";
+import { cn } from "@/lib/utils";
+
 export type MetricCard = {
   value: number | string;
   label: string;
   hint?: string;
+  icon: LucideIcon;
+  tone: Tone;
 };
 
 export function MetricCards({ metrics }: { metrics: MetricCard[] }) {
   if (metrics.length === 0) return null;
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      {metrics.map((m) => (
-        <div
-          key={m.label}
-          className="rounded-xl border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-        >
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {m.label}
-          </p>
-          <div className="mt-1 flex items-baseline gap-2">
-            <p className="text-[22px] font-semibold leading-none tracking-tight tabular-nums">
-              {m.value}
-            </p>
-            {m.hint ? (
-              <p className="truncate text-[12px] text-muted-foreground">
-                {m.hint}
+      {metrics.map((m) => {
+        const Icon = m.icon;
+        return (
+          <div
+            key={m.label}
+            className="flex items-center gap-4 rounded-2xl bg-card px-5 py-4 shadow-sm"
+          >
+            <span
+              className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                TONE_BG[m.tone],
+              )}
+            >
+              <Icon className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[24px] font-semibold leading-none tracking-tight tabular-nums">
+                {m.value}
               </p>
-            ) : null}
+              <p className="mt-1 truncate text-[12.5px] text-muted-foreground">
+                <span className="font-medium text-foreground/75">
+                  {m.label}
+                </span>
+                {m.hint ? (
+                  <>
+                    <span className="mx-1 text-muted-foreground/50">·</span>
+                    <span>{m.hint}</span>
+                  </>
+                ) : null}
+              </p>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -43,14 +43,6 @@ export type FeedbackTemplate = {
   questions: TemplateQuestion[];
 };
 
-export type FeedbackRequest = {
-  id: string;
-  requester_id: string;
-  template_id: string | null;
-  prompt: string | null;
-  created_at: string;
-};
-
 export type OpenFeedbackRequestForPeer = {
   feedback_id: string;
   request_id: string;
@@ -60,14 +52,4 @@ export type OpenFeedbackRequestForPeer = {
   requested_at: string | null;
   created_at: string;
   is_cross_team: boolean;
-};
-
-export type OwnFeedbackRequestSummary = {
-  request_id: string;
-  prompt: string | null;
-  template_name: string | null;
-  created_at: string;
-  peer_count: number;
-  submitted_count: number;
-  declined_count: number;
 };

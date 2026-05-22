@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, Building2, MessageSquareText, Sparkles, UsersRound } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  MessageSquareText,
+  Sparkles,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 import type { HrSnapshot } from "@/lib/hr/queries";
 import { cn } from "@/lib/utils";
 
@@ -46,24 +53,25 @@ export function HrSummary({ snapshot }: { snapshot: HrSnapshot }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-dashed border-border bg-card/50 px-5 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[14px] font-medium leading-tight">
-              HR-overzicht groeit nog mee
-            </p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Templatebeheer, drilldowns per team en de cross-team analyses
-              voor het scriptie-onderzoek komen in een volgende fase.
-            </p>
-          </div>
-          <Link
-            href="/team"
-            className="inline-flex shrink-0 items-center gap-1 self-center text-[12px] font-medium text-foreground/65 hover:text-primary"
-          >
-            Bekijk teams
-            <ArrowRight className="h-3 w-3" />
-          </Link>
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Beheer
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <BeheerLink
+            href="/beheer/personen"
+            icon={UserPlus}
+            tone="primary"
+            title="Personen beheren"
+            description="Maak gebruikers aan, pas rollen aan of verwijder accounts."
+          />
+          <BeheerLink
+            href="/beheer/teams"
+            icon={UsersRound}
+            tone="emerald"
+            title="Teams beheren"
+            description="Richt nieuwe teams in en koppel een team-lead."
+          />
         </div>
       </section>
     </div>
@@ -93,7 +101,7 @@ function Tile({
   label: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-3 rounded-2xl bg-card px-5 py-4 shadow-sm">
       <span
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg",
@@ -109,5 +117,43 @@ function Tile({
         <p className="text-[12px] text-muted-foreground">{label}</p>
       </div>
     </div>
+  );
+}
+
+function BeheerLink({
+  href,
+  icon: Icon,
+  tone,
+  title,
+  description,
+}: {
+  href: string;
+  icon: typeof UsersRound;
+  tone: Tone;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-start gap-3 rounded-2xl bg-card px-5 py-4 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          TONE[tone],
+        )}
+      >
+        <Icon className="h-4.5 w-4.5" strokeWidth={1.75} />
+      </span>
+      <div className="flex-1 space-y-0.5">
+        <p className="text-[14px] font-medium leading-tight">{title}</p>
+        <p className="text-[12px] text-muted-foreground">{description}</p>
+      </div>
+      <ArrowRight
+        className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/70"
+        strokeWidth={2}
+      />
+    </Link>
   );
 }

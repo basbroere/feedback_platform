@@ -1,4 +1,5 @@
-import { Hourglass } from "lucide-react";
+import { CheckSquare, Hourglass } from "lucide-react";
+import { PageTitle } from "@/components/ui/page-title";
 
 export function ActionItemsHeader({
   openTotal,
@@ -9,56 +10,23 @@ export function ActionItemsHeader({
   completedLast30Days: number;
   openOver4Weeks: number;
 }) {
+  const subtitle =
+    openTotal === 0
+      ? "Lekker, niks open."
+      : completedLast30Days > 0
+      ? `${openTotal} lopend · ${completedLast30Days} afgerond afgelopen 30 dagen`
+      : `${openTotal} lopend`;
+
   return (
     <div className="space-y-4">
-      <header className="space-y-1.5">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-          Actiepunten
-        </h1>
-        <p className="text-[14px] text-muted-foreground">
-          Volg wat je je hebt voorgenomen. Vink af wat klaar is, kom terug op wat blijft hangen.
-        </p>
-      </header>
-
-      <MetricStrip
-        openTotal={openTotal}
-        completedLast30Days={completedLast30Days}
+      <PageTitle
+        icon={CheckSquare}
+        tone="emerald"
+        title="Actiepunten"
+        subtitle={subtitle}
       />
-
       {openOver4Weeks > 0 ? <StaleNudge count={openOver4Weeks} /> : null}
     </div>
-  );
-}
-
-function MetricStrip({
-  openTotal,
-  completedLast30Days,
-}: {
-  openTotal: number;
-  completedLast30Days: number;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
-      <Metric value={openTotal} label="lopend" />
-      <span aria-hidden className="text-muted-foreground/40">
-        ·
-      </span>
-      <Metric
-        value={completedLast30Days}
-        label="afgerond afgelopen 30 dagen"
-      />
-    </div>
-  );
-}
-
-function Metric({ value, label }: { value: number; label: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-1.5">
-      <span className="text-[16px] font-semibold text-foreground tabular-nums">
-        {value}
-      </span>
-      <span>{label}</span>
-    </span>
   );
 }
 
@@ -72,8 +40,7 @@ function StaleNudge({ count }: { count: number }) {
         <span className="font-semibold">
           {count} actiepunt{count === 1 ? "" : "en"}
         </span>{" "}
-        staat al langer dan 4 weken open. Een goed moment om bij te werken, of
-        af te ronden als het toch niet meer past?
+        staat al langer dan 4 weken open. Bijwerken of afronden?
       </p>
     </div>
   );

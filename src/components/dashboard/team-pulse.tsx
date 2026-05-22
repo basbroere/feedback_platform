@@ -30,7 +30,7 @@ export function TeamPulse({ members }: { members: TeamMember[] }) {
         </Link>
       </div>
 
-      <ul className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <ul className="overflow-hidden rounded-2xl bg-card shadow-sm">
         {stale.map((m) => (
           <li key={m.id} className="border-b border-border last:border-b-0">
             <Link

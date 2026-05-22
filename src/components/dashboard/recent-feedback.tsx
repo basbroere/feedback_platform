@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Quote, Sparkles } from "lucide-react";
 import type { FeedbackWithSource } from "@/lib/feedback/types";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatRelativeWeeks } from "@/lib/format";
@@ -25,7 +25,7 @@ export function RecentFeedback({ items }: { items: FeedbackWithSource[] }) {
         </Link>
       </div>
 
-      <ul className="space-y-3">
+      <ul className="grid gap-3 sm:grid-cols-2">
         {recent.map((f) => (
           <FeedbackCard key={f.id} item={f} />
         ))}
@@ -38,8 +38,12 @@ function FeedbackCard({ item }: { item: FeedbackWithSource }) {
   const date = item.submitted_at ?? item.created_at;
   const snippet = pickSnippet(item);
   return (
-    <li className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex items-start gap-3">
+    <li className="relative overflow-hidden rounded-2xl bg-primary/5 px-5 py-4 shadow-sm">
+      <Quote
+        className="pointer-events-none absolute right-3 top-3 h-7 w-7 text-primary/15"
+        strokeWidth={1.5}
+      />
+      <div className="flex items-center gap-2.5">
         {item.author ? (
           <PersonAvatar
             id={item.author.id}
@@ -49,27 +53,25 @@ function FeedbackCard({ item }: { item: FeedbackWithSource }) {
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <p className="text-[14px] font-semibold leading-tight">
-              {item.author?.name ?? "Onbekend"}
-            </p>
-            <span className="text-[12px] text-muted-foreground">
-              · {formatRelativeWeeks(date)}
-            </span>
-            {item.is_cross_team ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-medium text-primary">
-                <Sparkles className="h-3 w-3" strokeWidth={1.75} />
-                Cross-team
-              </span>
-            ) : null}
-          </div>
-          {snippet ? (
-            <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-foreground/85">
-              {snippet}
-            </p>
-          ) : null}
+          <p className="truncate text-[13.5px] font-semibold leading-tight">
+            {item.author?.name ?? "Onbekend"}
+          </p>
+          <p className="text-[11.5px] text-muted-foreground">
+            {formatRelativeWeeks(date)}
+          </p>
         </div>
+        {item.is_cross_team ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            <Sparkles className="h-3 w-3" strokeWidth={1.75} />
+            Cross-team
+          </span>
+        ) : null}
       </div>
+      {snippet ? (
+        <p className="mt-2.5 line-clamp-3 text-[13px] leading-relaxed text-foreground/90">
+          {snippet}
+        </p>
+      ) : null}
     </li>
   );
 }

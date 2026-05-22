@@ -23,14 +23,10 @@ export default async function VoorbereidenPage({
   if (!one) notFound();
   if (one.completed_at) redirect(`/een-op-een/${id}`);
 
-  const template = one.template_id
-    ? await getTemplateById(one.template_id)
-    : null;
-
-  const activeItems = await getActiveActionItemsForEmployeeWithManager(
-    persona.id,
-    one.manager_id,
-  );
+  const [template, activeItems] = await Promise.all([
+    one.template_id ? getTemplateById(one.template_id) : Promise.resolve(null),
+    getActiveActionItemsForEmployeeWithManager(persona.id, one.manager_id),
+  ]);
   // Beperk tot eerdere bronnen, niet deze 1-op-1 zelf.
   const previous = activeItems.filter((it) => it.source_id !== one.id);
 

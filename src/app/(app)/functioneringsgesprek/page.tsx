@@ -15,6 +15,7 @@ import { getTeamMembers } from "@/lib/one-on-ones/queries";
 import { StartPerformanceReviewDialog } from "@/components/performance-review/start-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { PageTitle } from "@/components/ui/page-title";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -22,21 +23,6 @@ import type { PerformanceReviewListItem } from "@/lib/performance-reviews/types"
 
 export default async function PerformanceReviewIndex() {
   const persona = await requirePersona();
-
-  if (persona.role === "hr") {
-    return (
-      <div className="space-y-6">
-        <header className="space-y-1.5">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-            Functioneringsgesprekken
-          </h1>
-          <p className="text-[14px] text-muted-foreground">
-            HR-aggregaties volgen later. Bekijk lopende gesprekken via /team.
-          </p>
-        </header>
-      </div>
-    );
-  }
 
   const [asManager, asEmployee, managerTeam, prTemplates] = await Promise.all([
     listPerformanceReviewsForManager(persona.id),
@@ -73,25 +59,22 @@ export default async function PerformanceReviewIndex() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1.5">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-            Functioneringsgesprekken
-          </h1>
-          <p className="text-[14px] text-muted-foreground">
-            Halfjaarlijks gesprek waarin we terugkijken op de afgelopen periode
-            en vooruitkijken naar de volgende.
-          </p>
-        </div>
-        {persona.role === "manager" && employeesWithoutOpenReview.length > 0 ? (
-          <StartPerformanceReviewDialog
-            teamMembers={employeesWithoutOpenReview}
-            templates={prTemplates}
-            triggerLabel="Functioneringsgesprek starten"
-            triggerVariant="default"
-          />
-        ) : null}
-      </header>
+      <PageTitle
+        icon={ClipboardCheck}
+        tone="amber"
+        title="Functionering"
+        subtitle="Terugkijken en vooruitkijken, halfjaarlijks."
+        action={
+          persona.role === "manager" && employeesWithoutOpenReview.length > 0 ? (
+            <StartPerformanceReviewDialog
+              teamMembers={employeesWithoutOpenReview}
+              templates={prTemplates}
+              triggerLabel="Gesprek starten"
+              triggerVariant="default"
+            />
+          ) : null
+        }
+      />
 
       {asEmployee.length > 0 ? (
         <section className="space-y-4">
@@ -202,7 +185,7 @@ function OwnReviewCard({
 function ManagerReviewCard({ review }: { review: PerformanceReviewListItem }) {
   const isCompleted = review.status === "completed";
   return (
-    <li className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <li className="rounded-2xl bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <PersonAvatar
@@ -259,7 +242,7 @@ function CompletedRow({
     <li>
       <Link
         href={`/functioneringsgesprek/${review.id}`}
-        className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+        className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 shadow-sm transition-colors hover:bg-accent"
       >
         <CircleCheck className="h-4 w-4 text-emerald-500" />
         <div className="min-w-0 flex-1">

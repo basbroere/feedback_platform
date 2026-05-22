@@ -72,85 +72,6 @@ export async function upsertManagerFeedbackForOneOnOne(input: {
   revalidatePath("/dashboard");
 }
 
-export async function createFeedbackRequest(input: {
-  templateId: string;
-  prompt?: string;
-  peerIds: string[];
-}): Promise<{ requestId: string; createdCount: number }> {
-  const requesterId = await requirePersonaId();
-  const supabase = await createClient();
-
-  const peers = Array.from(new Set(input.peerIds)).filter(
-    (id) => id && id !== requesterId,
-  );
-  if (peers.length === 0) throw new Error("Kies minstens één collega");
-
-  const { data: template, error: tmplErr } = await supabase
-    .from("templates")
-    .select("id, type, is_active")
-    .eq("id", input.templateId)
-    .maybeSingle();
-  if (tmplErr || !template) throw new Error("Template niet gevonden");
-  if (template.type !== "peer_360" || !template.is_active) {
-    throw new Error("Template is niet geldig voor peer feedback");
-  }
-
-  const { data: peerRows, error: peerErr } = await supabase
-    .from("users")
-    .select("id")
-    .in("id", peers);
-  if (peerErr) throw new Error(peerErr.message);
-  const validPeerIds = (peerRows ?? []).map((p) => p.id);
-  if (validPeerIds.length === 0) throw new Error("Geen geldige collega's gevonden");
-
-  const prompt = input.prompt?.trim() ? input.prompt.trim() : null;
-
-  const { data: request, error: reqErr } = await supabase
-    .from("feedback_requests")
-    .insert({
-      requester_id: requesterId,
-      template_id: template.id,
-      prompt,
-    })
-    .select("id")
-    .single();
-  if (reqErr || !request) throw new Error(reqErr?.message ?? "Aanmaken mislukt");
-
-  const now = new Date().toISOString();
-  const feedbackRows = validPeerIds.map((peerId) => ({
-    recipient_id: requesterId,
-    author_id: peerId,
-    source_type: "peer_request" as const,
-    source_id: request.id,
-    prompt,
-    status: "requested" as const,
-    requested_at: now,
-  }));
-
-  const { data: insertedFeedback, error: fbErr } = await supabase
-    .from("feedback")
-    .insert(feedbackRows)
-    .select("id, author_id");
-  if (fbErr) throw new Error(fbErr.message);
-
-  const notifRows = (insertedFeedback ?? []).map((row) => ({
-    user_id: row.author_id,
-    type: "feedback_requested" as const,
-    payload: {
-      feedback_id: row.id,
-      request_id: request.id,
-      requester_id: requesterId,
-    },
-  }));
-  if (notifRows.length) {
-    await supabase.from("notifications").insert(notifRows);
-  }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/feedback");
-  return { requestId: request.id, createdCount: validPeerIds.length };
-}
-
 export async function submitFeedbackResponse(input: {
   feedbackId: string;
   responses: Record<string, string>;
@@ -165,8 +86,11 @@ export async function submitFeedbackResponse(input: {
     .maybeSingle();
   if (error || !row) throw new Error("Feedback-verzoek niet gevonden");
   if (row.author_id !== peerId) throw new Error("Niet jouw verzoek");
-  if (row.source_type !== "peer_request") {
-    throw new Error("Alleen peer-verzoeken zijn invulbaar");
+  if (
+    row.source_type !== "peer_request" &&
+    row.source_type !== "performance_review"
+  ) {
+    throw new Error("Dit verzoek is niet via deze flow invulbaar");
   }
   if (row.status !== "requested") throw new Error("Verzoek is al afgehandeld");
 
@@ -196,13 +120,17 @@ export async function submitFeedbackResponse(input: {
     type: "feedback_submitted" as const,
     payload: {
       feedback_id: row.id,
-      request_id: row.source_id,
+      source_type: row.source_type,
+      source_id: row.source_id,
       peer_id: peerId,
     },
   });
 
   revalidatePath("/dashboard");
   revalidatePath("/feedback");
+  if (row.source_type === "performance_review" && row.source_id) {
+    revalidatePath(`/functioneringsgesprek/${row.source_id}`);
+  }
 }
 
 export async function declineFeedbackRequest(input: { feedbackId: string }) {
@@ -211,13 +139,16 @@ export async function declineFeedbackRequest(input: { feedbackId: string }) {
 
   const { data: row, error } = await supabase
     .from("feedback")
-    .select("id, author_id, recipient_id, source_type, status")
+    .select("id, author_id, recipient_id, source_type, source_id, status")
     .eq("id", input.feedbackId)
     .maybeSingle();
   if (error || !row) throw new Error("Feedback-verzoek niet gevonden");
   if (row.author_id !== peerId) throw new Error("Niet jouw verzoek");
-  if (row.source_type !== "peer_request") {
-    throw new Error("Alleen peer-verzoeken zijn declineerbaar");
+  if (
+    row.source_type !== "peer_request" &&
+    row.source_type !== "performance_review"
+  ) {
+    throw new Error("Dit verzoek is niet declineerbaar");
   }
   if (row.status !== "requested") throw new Error("Verzoek is al afgehandeld");
 
@@ -229,4 +160,7 @@ export async function declineFeedbackRequest(input: { feedbackId: string }) {
 
   revalidatePath("/dashboard");
   revalidatePath("/feedback");
+  if (row.source_type === "performance_review" && row.source_id) {
+    revalidatePath(`/functioneringsgesprek/${row.source_id}`);
+  }
 }

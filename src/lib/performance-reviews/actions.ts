@@ -199,6 +199,224 @@ export async function saveManagerPerformanceReviewMeeting(input: {
   revalidatePath("/actiepunten");
 }
 
+// Medewerker kiest 1 collega voor peer-feedback binnen deze cyclus. Eventuele
+// nog niet beantwoorde eerdere keuze wordt vervangen; submitted of declined
+// rijen blijven staan voor de historie.
+export async function chooseCyclePeer(input: {
+  performanceReviewId: string;
+  peerId: string;
+}): Promise<{ feedbackId: string }> {
+  const employeeId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.employee_id !== employeeId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Dit functioneringsgesprek is al afgerond");
+  if (!input.peerId) throw new Error("Kies een collega");
+  if (input.peerId === pr.employee_id)
+    throw new Error("Je kunt jezelf niet kiezen");
+  if (input.peerId === pr.manager_id)
+    throw new Error("Je manager geeft al feedback in deze cyclus");
+
+  const { data: peer, error: peerErr } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", input.peerId)
+    .maybeSingle();
+  if (peerErr || !peer) throw new Error("Collega niet gevonden");
+
+  // Verwijder eerder verzonden maar nog niet beantwoorde peer-rijen.
+  const { data: existing } = await supabase
+    .from("feedback")
+    .select("id, author_id, status")
+    .eq("source_type", "performance_review")
+    .eq("source_id", input.performanceReviewId)
+    .neq("author_id", pr.manager_id)
+    .neq("author_id", pr.employee_id);
+  const toDelete = (existing ?? [])
+    .filter((r) => r.status === "requested")
+    .map((r) => r.id);
+  if (toDelete.length) {
+    await supabase.from("feedback").delete().in("id", toDelete);
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("feedback")
+    .insert({
+      recipient_id: pr.employee_id,
+      author_id: input.peerId,
+      source_type: "performance_review" as const,
+      source_id: input.performanceReviewId,
+      status: "requested" as const,
+      requested_at: now,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Uitnodigen mislukt");
+
+  await supabase.from("notifications").insert({
+    user_id: input.peerId,
+    type: "feedback_requested" as const,
+    payload: {
+      feedback_id: data.id,
+      performance_review_id: input.performanceReviewId,
+      requester_id: employeeId,
+    },
+  });
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(
+    `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+  );
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/feedback");
+  revalidatePath("/dashboard");
+  return { feedbackId: data.id };
+}
+
+// Medewerker wist de peer-keuze. Mag alleen als de peer nog niet heeft
+// geantwoord; anders blijft de feedback in het dossier staan.
+export async function removeCyclePeer(input: {
+  performanceReviewId: string;
+}): Promise<void> {
+  const employeeId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.employee_id !== employeeId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Dit functioneringsgesprek is al afgerond");
+
+  const { data: existing } = await supabase
+    .from("feedback")
+    .select("id, author_id, status")
+    .eq("source_type", "performance_review")
+    .eq("source_id", input.performanceReviewId)
+    .neq("author_id", pr.manager_id)
+    .neq("author_id", pr.employee_id);
+  const toDelete = (existing ?? [])
+    .filter((r) => r.status === "requested")
+    .map((r) => r.id);
+  if (toDelete.length) {
+    await supabase.from("feedback").delete().in("id", toDelete);
+  }
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(
+    `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+  );
+}
+
+// Manager vult zelf het 360-template in en bewaart of submit het direct.
+// Opslaan als concept (status='requested') mag ook; submit zet de status op
+// 'submitted' en stuurt notificatie naar de medewerker.
+export async function submitManagerCycleFeedback(input: {
+  performanceReviewId: string;
+  responses: Record<string, string>;
+  submit?: boolean;
+}): Promise<{ feedbackId: string }> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+
+  const cleaned: Record<string, string> = {};
+  for (const [k, v] of Object.entries(input.responses ?? {})) {
+    if (typeof v === "string" && v.trim().length > 0) {
+      cleaned[k] = v.trim();
+    }
+  }
+
+  const wantsSubmit = input.submit === true;
+  if (wantsSubmit && Object.keys(cleaned).length === 0) {
+    throw new Error("Vul minstens één vraag in voordat je verstuurt");
+  }
+
+  const { data: existing } = await supabase
+    .from("feedback")
+    .select("id, status")
+    .eq("source_type", "performance_review")
+    .eq("source_id", input.performanceReviewId)
+    .eq("author_id", managerId)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  let feedbackId: string;
+
+  if (existing?.id) {
+    const patch: Record<string, unknown> = {
+      responses: cleaned,
+    };
+    if (wantsSubmit) {
+      patch.status = "submitted";
+      patch.submitted_at = now;
+    }
+    const { error: updErr } = await supabase
+      .from("feedback")
+      .update(patch)
+      .eq("id", existing.id);
+    if (updErr) throw new Error(updErr.message);
+    feedbackId = existing.id;
+  } else {
+    const { data, error } = await supabase
+      .from("feedback")
+      .insert({
+        recipient_id: pr.employee_id,
+        author_id: managerId,
+        source_type: "performance_review" as const,
+        source_id: input.performanceReviewId,
+        responses: cleaned,
+        status: wantsSubmit ? ("submitted" as const) : ("requested" as const),
+        submitted_at: wantsSubmit ? now : null,
+        requested_at: now,
+      })
+      .select("id")
+      .single();
+    if (error || !data)
+      throw new Error(error?.message ?? "Opslaan mislukt");
+    feedbackId = data.id;
+  }
+
+  if (wantsSubmit) {
+    await supabase.from("notifications").insert({
+      user_id: pr.employee_id as string,
+      type: "feedback_submitted" as const,
+      payload: {
+        feedback_id: feedbackId,
+        performance_review_id: input.performanceReviewId,
+        author_id: managerId,
+      },
+    });
+  }
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/feedback");
+  revalidatePath("/dashboard");
+  return { feedbackId };
+}
+
 export async function createActionItemForPerformanceReview(input: {
   performanceReviewId: string;
   description: string;
