@@ -21,6 +21,7 @@ import {
 const ROLE_LABEL: Record<Persona["role"], string> = {
   hr: "HR",
   manager: "Manager",
+  team_lead: "Team-lead",
   employee: "Medewerker",
 };
 

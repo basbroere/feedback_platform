@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
 import {
   getActiveActionItemsForPerformanceReview,
+  getCycleInputs,
   getDossierFeedback,
   getPerformanceReviewDossier,
   getPerformanceReviewForEmployee,
@@ -29,10 +30,11 @@ export default async function PerformanceReviewDetail({
     const questions =
       managerView.template?.questions ?? template?.questions ?? [];
 
-    const [newItems, dossier, feedback] = await Promise.all([
+    const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
       getActiveActionItemsForPerformanceReview(managerView.id),
       getPerformanceReviewDossier(managerView.id),
       getDossierFeedback(managerView.id),
+      getCycleInputs(managerView.id),
     ]);
 
     return (
@@ -47,6 +49,7 @@ export default async function PerformanceReviewDetail({
         <PerformanceReviewMeetingView
           review={managerView}
           questions={questions}
+          cycleInputs={cycleInputs}
           newActionItems={newItems}
           dossierActionItems={dossier?.completedActionItems ?? []}
           dossierFeedback={feedback}
@@ -66,9 +69,12 @@ export default async function PerformanceReviewDetail({
   const questions =
     employeeView.template?.questions ?? template?.questions ?? [];
 
-  const actionItems = await getActiveActionItemsForPerformanceReview(
-    employeeView.id,
-  );
+  const [actionItems, cycleInputs, dossier, feedback] = await Promise.all([
+    getActiveActionItemsForPerformanceReview(employeeView.id),
+    getCycleInputs(employeeView.id),
+    getPerformanceReviewDossier(employeeView.id),
+    getDossierFeedback(employeeView.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -83,6 +89,11 @@ export default async function PerformanceReviewDetail({
         review={employeeView}
         questions={questions}
         actionItems={actionItems}
+        cycleInputs={cycleInputs}
+        dossierActionItems={dossier?.completedActionItems ?? []}
+        dossierFeedback={feedback}
+        windowStart={dossier?.windowStart ?? employeeView.cycle_started_at}
+        windowEnd={dossier?.windowEnd ?? new Date().toISOString()}
       />
     </div>
   );

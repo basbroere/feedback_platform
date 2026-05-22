@@ -10,6 +10,7 @@ import type {
   PerformanceReviewTemplate,
 } from "@/lib/performance-reviews/types";
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
+import { RatingBInput } from "@/components/templates/rating-input";
 import { cn } from "@/lib/utils";
 
 export function PerformanceReviewPreparationForm({
@@ -53,35 +54,23 @@ export function PerformanceReviewPreparationForm({
   }
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3">
-        <header>
-          <h2 className="text-[15px] font-semibold tracking-tight">
-            Je zelfevaluatie
-          </h2>
-          <p className="text-[13px] text-muted-foreground">
-            Vragen zijn suggesties. Vul aan waar je iets te zeggen hebt; leeg
-            laten mag.
-          </p>
-        </header>
-
-        {template ? (
-          <div className="space-y-6">
-            {template.questions.map((q) => (
-              <QuestionInput
-                key={q.id}
-                question={q}
-                value={answers[q.id] ?? ""}
-                onChange={(v) => setAnswer(q.id, v)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Geen template gekoppeld aan dit functioneringsgesprek.
-          </p>
-        )}
-      </section>
+    <div className="space-y-6">
+      {template ? (
+        <div className="space-y-6">
+          {template.questions.map((q) => (
+            <QuestionInput
+              key={q.id}
+              question={q}
+              value={answers[q.id] ?? ""}
+              onChange={(v) => setAnswer(q.id, v)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Geen template gekoppeld aan dit functioneringsgesprek.
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <Button onClick={submit} disabled={isPending}>
@@ -133,6 +122,8 @@ function renderControl(
   switch (question.kind) {
     case "scale_1_5":
       return <ScaleInput id={id} value={value} onChange={onChange} />;
+    case "rating_b_1_5":
+      return <RatingBInput id={id} value={value} onChange={onChange} />;
     case "choice_single":
       return (
         <ChoiceSingleInput

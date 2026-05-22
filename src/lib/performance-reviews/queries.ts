@@ -5,8 +5,10 @@ import type {
   TemplateQuestion,
 } from "@/lib/one-on-ones/types";
 import { getFeedbackForEmployee } from "@/lib/feedback/queries";
-import type { FeedbackWithSource } from "@/lib/feedback/types";
+import type { FeedbackStatus, FeedbackWithSource } from "@/lib/feedback/types";
 import type {
+  CycleFeedback,
+  CycleInputs,
   DossierActionItem,
   PerformanceReviewDossier,
   PerformanceReviewForEmployee,
@@ -370,6 +372,69 @@ export async function getUpcomingPerformanceReviewForEmployee(
     .limit(1);
   if (error || !data || data.length === 0) return null;
   return mapListRow(data[0] as unknown as RawListRow);
+}
+
+// Haalt de peer- en manager-feedback-rijen op die bij deze cyclus horen.
+// Peer = author die niet de manager en niet de medewerker is.
+// Manager = author die de manager_id van de cyclus is.
+export async function getCycleInputs(
+  performanceReviewId: string,
+): Promise<CycleInputs> {
+  const supabase = await createClient();
+  const { data: pr } = await supabase
+    .from("performance_reviews")
+    .select("manager_id, employee_id")
+    .eq("id", performanceReviewId)
+    .maybeSingle();
+  if (!pr) return { peer: null, manager: null };
+
+  const { data } = await supabase
+    .from("feedback")
+    .select(
+      `id, author_id, status, responses, submitted_at, is_cross_team, created_at, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
+    )
+    .eq("source_type", "performance_review")
+    .eq("source_id", performanceReviewId)
+    .order("created_at", { ascending: false });
+
+  type Row = {
+    id: string;
+    author_id: string;
+    status: FeedbackStatus;
+    responses: Record<string, string> | null;
+    submitted_at: string | null;
+    is_cross_team: boolean;
+    created_at: string;
+    author: PersonRef | null;
+  };
+
+  const rows = (data ?? []) as unknown as Row[];
+
+  const managerRow =
+    rows.find(
+      (r) => r.author_id === pr.manager_id && r.status !== "declined",
+    ) ?? null;
+  const peerRow =
+    rows.find(
+      (r) =>
+        r.author_id !== pr.manager_id &&
+        r.author_id !== pr.employee_id &&
+        r.status !== "declined",
+    ) ?? null;
+
+  function toCycle(row: Row | null): CycleFeedback | null {
+    if (!row || !row.author) return null;
+    return {
+      feedback_id: row.id,
+      author: row.author,
+      status: row.status,
+      responses: row.responses ?? {},
+      submitted_at: row.submitted_at,
+      is_cross_team: row.is_cross_team,
+    };
+  }
+
+  return { peer: toCycle(peerRow), manager: toCycle(managerRow) };
 }
 
 export async function listOpenPerformanceReviewsForManager(

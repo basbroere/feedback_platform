@@ -3,6 +3,7 @@ import type {
   PersonRef,
   TemplateQuestion,
 } from "@/lib/one-on-ones/types";
+import type { FeedbackStatus } from "@/lib/feedback/types";
 
 export type PerformanceReviewStatus =
   | "draft"
@@ -63,4 +64,21 @@ export type DossierActionItem = ActionItem & {
   source_label: string;
   source_href: string | null;
   source_date: string | null;
+};
+
+// Een 360-cyclus heeft drie feedback-stromen: zelfevaluatie (in
+// performance_reviews.employee_self_evaluation), peer (1 collega) en manager.
+// Peer en manager landen in de feedback-tabel met source_type='performance_review'.
+export type CycleFeedback = {
+  feedback_id: string;
+  author: PersonRef;
+  status: FeedbackStatus;
+  responses: Record<string, string>;
+  submitted_at: string | null;
+  is_cross_team: boolean;
+};
+
+export type CycleInputs = {
+  peer: CycleFeedback | null;
+  manager: CycleFeedback | null;
 };

@@ -2,11 +2,11 @@
 
 Snapshot van wat er **nu daadwerkelijk in de code** zit. Voor het ontwerp, de visie en de niet-gebouwde fasen, zie `CLAUDE.md`. Dit document beschrijft alleen de huidige realiteit zodat een nieuwe sessie snel weet wat er werkt.
 
-Laatst bijgewerkt: 2026-05-17.
+Laatst bijgewerkt: 2026-05-22.
 
 ## In één regel
 
-Demo-platform voor Bambelo met persona-switcher, een werkende 1-op-1-module en peer-feedback-module, een dashboard per rol, en losse pagina's voor actiepunten en feedback. Functionerings- en beoordelingsgesprekken zijn nog niet gebouwd.
+Demo-platform voor Bambelo met persona-switcher, een werkende 1-op-1-module, peer-feedback-module en 360 functioneringsgesprek-module, een dashboard per rol, en losse pagina's voor actiepunten en feedback. Beoordelingsgesprek is nog niet gebouwd.
 
 ## Routes
 
@@ -23,7 +23,10 @@ App-routes onder `src/app/(app)/`, demo-modus zonder auth.
 | `/een-op-een/[id]` | manager | Meeting-view: voorbereiding medewerker, vorige actiepunten, privé-notities, gedeelde samenvatting, manager-feedback, actiepunten beheren. |
 | `/actiepunten` | medewerker, manager | Lijst eigen actiepunten met filter-tabs (Lopend/Afgerond/Alles), search, detail-dialog, gentle nudge bij items > 4 weken open. |
 | `/feedback` | medewerker, manager | Ontvangen feedback + "Feedback aanvragen"-flow voor peer-feedback. |
-| `/feedback-verzoek/[id]` | iedereen die uitgenodigd is | Peer-feedback invulformulier op template-basis. |
+| `/feedback-verzoek/[id]` | iedereen die uitgenodigd is | Invulformulier voor peer-feedback (ad hoc) en voor 360 feedback binnen een functioneringsgesprek-cyclus. Werkt voor source_type `peer_request` en `performance_review`. |
+| `/functioneringsgesprek` | manager, medewerker | Overzicht van eigen cyclus(sen) en (als manager) je teamleden. Manager kan een nieuwe cyclus starten. |
+| `/functioneringsgesprek/[id]/voorbereiden` | medewerker | Voorbereiding: kies één collega voor peer-feedback en vul je zelfreflectie in op het 360-template. |
+| `/functioneringsgesprek/[id]` | manager / medewerker | Cyclus-detail. Manager: drie statuskaarten, zelfreflectie medewerker, peer-feedback, eigen 360-feedback invullen, dossier, actiepunten, optionele gespreksafsluiting. Medewerker: statuskaarten, na afronding ook inhoud van peer- en manager-feedback. |
 
 ### Dashboard per rol
 
@@ -49,15 +52,15 @@ Migraties staan in `supabase/migrations/`. Geen RLS in demo-modus (expliciet `di
 - `one_on_ones` (id, manager_id, employee_id, template_id, subject, scheduled_at, completed_at, employee_preparation, manager_private_notes, shared_summary)
 - `action_items` (id, owner_id, description, status: open/completed/expired, target_date, notes, source_type, source_id, created_at, completed_at)
 - `feedback` (id, recipient_id, author_id, source_type: one_on_one/peer_request/performance_review, source_id, prompt, body, responses, is_cross_team, status: requested/submitted/declined, requested_at, submitted_at, created_at)
-- `feedback_requests` (id, requester_id, template_id, prompt, created_at)
+- `feedback_requests` (id, requester_id, template_id, prompt, created_at) — alleen voor ad hoc peer-feedback; 360-cyclus-peers worden direct in `feedback` aangemaakt met source_id = performance_review id.
+- `performance_reviews` (id, manager_id, employee_id, template_id, cycle_started_at, completed_at, status, employee_self_evaluation jsonb, manager_preparation jsonb (legacy, ongebruikt sinds 360-overhaul), manager_private_notes, shared_summary)
 - `notifications` (id, user_id, type, payload, read_at, created_at)
 
 ### Tabellen aangelegd, maar nog niet in gebruik
 
 Aanwezig in `20260513193859_initial_schema.sql` maar nog geen queries, actions of UI voor:
 
-- `performance_reviews`
-- `peer_feedback` (apart van het peer-mechanisme dat nu via `feedback` met `source_type=peer_request` loopt)
+- `peer_feedback` (apart van het peer-mechanisme dat via `feedback` loopt; ook voor 360-cycli gebruiken we `feedback` met source_type=performance_review)
 - `evaluations`
 
 ### Cascade-gedrag
@@ -82,13 +85,19 @@ Aanwezig in `20260513193859_initial_schema.sql` maar nog geen queries, actions o
 5. **Peer feedback aanvragen:** kies template, optionele prompt, selecteer collega's (cross-team aangemoedigd, niet verplicht); aanvragen verschijnen bij die collega's.
 6. **Peer feedback geven:** invullen op `/feedback-verzoek/[id]`, met naam zichtbaar bij de feedback. `is_cross_team` wordt automatisch berekend op basis van team-verschil.
 7. **Manager-feedback aan medewerker na 1-op-1:** opgeslagen als `feedback` row met `source_type = one_on_one`, verschijnt op `/feedback` van de medewerker.
+8. **360 functioneringsgesprek-cyclus:** manager start, kiest één 360-template (type `peer_360`, default "Functioneringsgesprek 360"). Daarna lopen drie sporen parallel:
+   - **Zelfreflectie** (medewerker, opgeslagen in `performance_reviews.employee_self_evaluation`).
+   - **Peer-feedback** (medewerker kiest precies één collega; opgeslagen als `feedback`-rij met source_type=performance_review, status start `requested`, invullen via `/feedback-verzoek/[id]`). Cross-team automatisch.
+   - **Manager-feedback** (manager vult hetzelfde 360-template in op de cyclus-pagina; eigen `feedback`-rij met author_id = manager).
+   - Inhoud van peer- en manager-feedback wordt voor de medewerker pas zichtbaar **na afronding** van de cyclus, om de zelfreflectie en peer-input bias-vrij te houden.
+   - Dossier (afgeronde actiepunten en ontvangen feedback uit afgelopen 6 maanden) en actiepunten-beheer blijven beschikbaar; gespreksverslag (privé + gedeeld) is optioneel bij afronding.
 
 ## Wat nog niet gebouwd is
 
 Direct uit CLAUDE.md fasen 4+:
 
-- Functioneringsgesprek-cyclus: zelfevaluatie, peer-selectie met cross-team verplichting, peer-feedback-invulflow gekoppeld aan functioneringscyclus, manager-meeting met alles bij elkaar.
 - Beoordelingsgesprek: koppeling met vorige functioneringsgesprek, beoordeling per actiepunt, akkoord/bezwaar-flow.
+- HR-templatebeheer-UI (CLAUDE.md noemt sleep-en-laat-vallen vraagvolgorde, archiveren, dupliceren). Templates worden nu nog alleen via seed gemaakt; HR/admin overzicht voor template-create staat in de planning na de 360-overhaul.
 - HR-dashboard volledige aggregaties, templatebeheer-UI, demo-reset-knop, gebruikers- en teamsbeheer-UI.
 - AI "maak constructiever"-knop en `ai_suggestions_log` tabel.
 - Notificaties-inbox-UI (de tabel wordt wel gevuld).

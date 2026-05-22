@@ -213,7 +213,7 @@ export async function getRecentCompletedOneOnOnesForManager(
 
 export async function getLatestCompletedOneOnOneForUser(
   userId: string,
-  role: "employee" | "manager" | "hr",
+  role: "employee" | "team_lead" | "manager" | "hr",
 ): Promise<{ id: string; completed_at: string } | null> {
   if (role === "hr") return null;
   const supabase = await createClient();
@@ -249,7 +249,7 @@ export async function getLastCompletedOneOnOneForPair(
 
 export type TeamMember = PersonRef & {
   email: string;
-  role: "employee" | "manager" | "hr";
+  role: "employee" | "team_lead" | "manager" | "hr";
   last_one_on_one_at: string | null;
   weeks_since_last: number | null;
   upcoming_one_on_one_at: string | null;

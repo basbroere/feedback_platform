@@ -75,7 +75,7 @@ const USERS: SeedUser[] = [
 type Question = {
   id: string;
   label: string;
-  kind: "open" | "scale_1_5" | "choice_single" | "choice_multi";
+  kind: "open" | "scale_1_5" | "rating_b_1_5" | "choice_single" | "choice_multi";
   options?: string[];
   required?: boolean;
   hint?: string;
@@ -119,24 +119,49 @@ const TEMPLATES: SeedTemplate[] = [
     ],
   },
   {
-    type: "performance_review",
-    name: "Halfjaarlijks functioneringsgesprek",
+    type: "peer_360",
+    name: "Functioneringsgesprek 360",
     questions: [
-      { id: "gevoel", label: "Hoe gaat het met je?", kind: "open" },
-      { id: "ervaring", label: "Wat ervaar je in het werk, goed en minder goed?", kind: "open" },
-      { id: "groei", label: "Waar wil je groeien de komende periode?", kind: "open" },
-      { id: "team", label: "Hoe loopt de samenwerking met je team?", kind: "open" },
-      { id: "ambitie", label: "Welke ambitie heb je voor het komende halfjaar?", kind: "open" },
-    ],
-  },
-  {
-    type: "performance_review",
-    name: "Onboarding 6 maanden",
-    questions: [
-      { id: "landing", label: "Hoe heb je de eerste 6 maanden ervaren?", kind: "open" },
-      { id: "rol", label: "Past je rol bij wat je verwachtte?", kind: "open" },
-      { id: "kracht", label: "Waar voel je je krachtig in?", kind: "open" },
-      { id: "ontwikkel", label: "Waar wil je nog ontwikkelen?", kind: "open" },
+      {
+        id: "vakmanschap",
+        label: "Vakmanschap en kennis",
+        kind: "rating_b_1_5",
+        required: true,
+        hint: "Hoe sterk is iemand inhoudelijk in zijn of haar werk?",
+      },
+      {
+        id: "samenwerking",
+        label: "Samenwerking",
+        kind: "rating_b_1_5",
+        required: true,
+        hint: "Hoe loopt het samen werken in en buiten het team?",
+      },
+      {
+        id: "eigenaarschap",
+        label: "Eigenaarschap en initiatief",
+        kind: "rating_b_1_5",
+        required: true,
+        hint: "Pakt iemand zelf zaken op en ziet hij of zij wat er gedaan moet worden?",
+      },
+      {
+        id: "communicatie",
+        label: "Communicatie",
+        kind: "rating_b_1_5",
+        required: true,
+        hint: "Helder, op tijd, en in de juiste toon: schriftelijk en mondeling.",
+      },
+      {
+        id: "ontwikkeling",
+        label: "Leervermogen en ontwikkeling",
+        kind: "rating_b_1_5",
+        hint: "Hoe open en gericht leert iemand van feedback en ervaringen?",
+      },
+      {
+        id: "open",
+        label: "Wat wil je verder nog meegeven?",
+        kind: "open",
+        hint: "Een algemeen punt, een compliment, of iets dat buiten de scores valt.",
+      },
     ],
   },
   {

@@ -46,24 +46,30 @@ export type TeamWithMembers = {
   members: Persona[];
 };
 
-export async function listTeamsWithMembers(): Promise<TeamWithMembers[]> {
-  const supabase = await createClient();
-  const { data: teams, error: teamsErr } = await supabase
-    .from("teams")
-    .select("id, name")
-    .order("name");
-  if (teamsErr || !teams) return [];
+export const listTeamsWithMembers = cache(
+  async (): Promise<TeamWithMembers[]> => {
+    const supabase = await createClient();
+    const [teamsRes, usersRes] = await Promise.all([
+      supabase.from("teams").select("id, name").order("name"),
+      supabase
+        .from("users")
+        .select("id, name, email, role, team_id, avatar_url")
+        .order("role")
+        .order("name"),
+    ]);
 
-  const { data: users, error: usersErr } = await supabase
-    .from("users")
-    .select("id, name, email, role, team_id, avatar_url")
-    .order("role")
-    .order("name");
-  if (usersErr || !users) return teams.map((t) => ({ id: t.id, name: t.name, members: [] }));
+    const teams = teamsRes.data;
+    if (teamsRes.error || !teams) return [];
 
-  return teams.map((t) => ({
-    id: t.id,
-    name: t.name,
-    members: (users as Persona[]).filter((u) => u.team_id === t.id),
-  }));
-}
+    const users = usersRes.data;
+    if (usersRes.error || !users) {
+      return teams.map((t) => ({ id: t.id, name: t.name, members: [] }));
+    }
+
+    return teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      members: (users as Persona[]).filter((u) => u.team_id === t.id),
+    }));
+  },
+);

@@ -15,9 +15,8 @@ import type { DossierItem } from "@/lib/action-items/queries";
 import type { PerformanceReviewListItem } from "@/lib/performance-reviews/types";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatDate, formatDateTime, formatRelativeWeeks } from "@/lib/format";
+import { TONE_BG, type Tone } from "@/lib/ui/tone";
 import { cn } from "@/lib/utils";
-
-type Tone = "blue" | "primary" | "emerald" | "violet" | "amber";
 
 export function OnYourPlate({
   upcoming,
@@ -48,21 +47,14 @@ export function OnYourPlate({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Op je bord
-        </h2>
-        {hasAny ? (
-          <span className="text-[12px] text-muted-foreground">
-            Wat nu om aandacht vraagt
-          </span>
-        ) : null}
-      </div>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Op je bord
+      </h2>
 
       {!hasAny ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">
-            Niks open. Geniet ervan, of plan iets in voor je team.
+            Niks open. Geniet ervan.
           </p>
         </div>
       ) : (
@@ -113,7 +105,7 @@ function Row({
         className="group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-accent/40"
       >
         {leading ?? (
-          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", TONE[tone])}>
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", TONE_BG[tone])}>
             <Icon className="h-4 w-4" strokeWidth={1.75} />
           </span>
         )}
@@ -131,17 +123,6 @@ function Row({
   );
 }
 
-const TONE: Record<Tone, string> = {
-  blue: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300",
-  primary: "bg-primary/10 text-primary",
-  emerald:
-    "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
-  violet:
-    "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300",
-  amber:
-    "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
-};
-
 function OwnPerformanceReviewRow({
   review,
 }: {
@@ -152,7 +133,7 @@ function OwnPerformanceReviewRow({
       icon={ClipboardCheck}
       tone="amber"
       title={review.template_name ?? "Functioneringsgesprek"}
-      meta={`Met ${review.manager.name} · gestart op ${formatDate(review.cycle_started_at)}`}
+      meta={`Met ${review.manager.name} · sinds ${formatDate(review.cycle_started_at)}`}
       cta="Zelfevaluatie"
       href={`/functioneringsgesprek/${review.id}/voorbereiden`}
     />
@@ -165,8 +146,8 @@ function ManagerPerformanceReviewRow({
   review: PerformanceReviewListItem;
 }) {
   const inputStatus = review.has_employee_input
-    ? "zelfevaluatie ingevuld"
-    : "zelfevaluatie nog leeg";
+    ? "zelfevaluatie binnen"
+    : "wacht op zelfevaluatie";
   return (
     <Row
       icon={ClipboardCheck}
@@ -189,7 +170,7 @@ function ManagerPerformanceReviewRow({
           <span className="font-semibold">{review.employee.name}</span>
         </span>
       }
-      meta={`Als manager · ${inputStatus}`}
+      meta={inputStatus}
       cta="Openen"
       href={`/functioneringsgesprek/${review.id}`}
     />
@@ -202,7 +183,7 @@ function UpcomingRow({ upcoming }: { upcoming: OneOnOneListItem }) {
       icon={CalendarClock}
       tone="blue"
       title={upcoming.subject || "1-op-1"}
-      meta={`Volgende 1-op-1 · ${formatDateTime(upcoming.scheduled_at)}`}
+      meta={formatDateTime(upcoming.scheduled_at)}
       cta="Voorbereiden"
       href={`/een-op-een/${upcoming.id}/voorbereiden`}
     />
@@ -234,7 +215,7 @@ function ManagerUpcomingRow({ item }: { item: ManagerUpcomingOneOnOne }) {
           <span className="font-semibold">{item.employee.name}</span>
         </span>
       }
-      meta={`Als manager · ${formatDateTime(item.scheduled_at)}${subjectTrailing}`}
+      meta={`${formatDateTime(item.scheduled_at)}${subjectTrailing}`}
       cta="Openen"
       href={`/een-op-een/${item.id}`}
     />
@@ -273,9 +254,7 @@ function FeedbackRequestRow({ req }: { req: OpenFeedbackRequestForPeer }) {
 }
 
 function ActionItemRow({ item }: { item: DossierItem }) {
-  const meta = item.source?.with
-    ? `Uit 1-op-1 met ${firstName(item.source.with.name)} · open sinds ${formatRelativeWeeks(item.created_at)}`
-    : `Open sinds ${formatRelativeWeeks(item.created_at)}`;
+  const meta = `Open · ${formatRelativeWeeks(item.created_at)}`;
   return (
     <Row
       icon={CheckSquare}
@@ -286,8 +265,4 @@ function ActionItemRow({ item }: { item: DossierItem }) {
       href="/actiepunten"
     />
   );
-}
-
-function firstName(full: string): string {
-  return full.split(" ")[0] ?? full;
 }

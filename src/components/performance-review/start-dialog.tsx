@@ -97,14 +97,14 @@ export function StartPerformanceReviewDialog(props: Props) {
         <DialogHeader>
           <DialogTitle>
             {fixedEmployeeName
-              ? `Functioneringsgesprek met ${fixedEmployeeName}`
-              : "Functioneringsgesprek starten"}
+              ? `360 functioneringsgesprek met ${fixedEmployeeName}`
+              : "360 functioneringsgesprek starten"}
           </DialogTitle>
           <DialogDescription>
-            We starten een halfjaarlijkse cyclus. {targetName} kan zelf een
-            zelfevaluatie invullen, en jij hebt straks alle voltooide
-            actiepunten en ontvangen feedback van het afgelopen half jaar bij
-            de hand.
+            Drie perspectieven op hetzelfde template: {targetName} reflecteert
+            op zichzelf, kiest één collega voor peer-feedback, en jij vult als
+            manager dezelfde 360-vragen in. Voltooide actiepunten en ontvangen
+            feedback van het afgelopen half jaar staan straks naast elkaar.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">

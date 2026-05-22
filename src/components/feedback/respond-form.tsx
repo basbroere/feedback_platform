@@ -13,6 +13,7 @@ import {
 import type { FeedbackStatus, FeedbackTemplate } from "@/lib/feedback/types";
 import type { PersonRef } from "@/lib/one-on-ones/types";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { RatingBInput } from "@/components/templates/rating-input";
 
 export function RespondForm({
   feedbackId,
@@ -139,14 +140,23 @@ export function RespondForm({
                       {q.hint}
                     </p>
                   ) : null}
-                  <Textarea
-                    id={`q-${q.id}`}
-                    value={responses[q.id] ?? ""}
-                    onChange={(e) => update(q.id, e.target.value)}
-                    placeholder="Typ hier je antwoord"
-                    rows={3}
-                    disabled={isPending}
-                  />
+                  {q.kind === "rating_b_1_5" ? (
+                    <RatingBInput
+                      id={`q-${q.id}`}
+                      value={responses[q.id] ?? ""}
+                      onChange={(v) => update(q.id, v)}
+                      disabled={isPending}
+                    />
+                  ) : (
+                    <Textarea
+                      id={`q-${q.id}`}
+                      value={responses[q.id] ?? ""}
+                      onChange={(e) => update(q.id, e.target.value)}
+                      placeholder="Typ hier je antwoord"
+                      rows={3}
+                      disabled={isPending}
+                    />
+                  )}
                 </div>
               ))
             ) : (

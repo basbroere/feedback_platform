@@ -3,14 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
 import type { PerformanceReviewTemplate } from "./types";
 
+// Een functioneringsgesprek draait om 360 feedback (zelf, een collega, jouw
+// manager). Daarom gebruiken we 'peer_360'-templates: hetzelfde template wordt
+// vanuit drie perspectieven ingevuld.
+
 export const getDefaultPerformanceReviewTemplate = cache(
   async (): Promise<PerformanceReviewTemplate | null> => {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("templates")
       .select("id, name, questions")
-      .eq("type", "performance_review")
-      .eq("name", "Halfjaarlijks functioneringsgesprek")
+      .eq("type", "peer_360")
+      .eq("name", "Functioneringsgesprek 360")
       .eq("is_active", true)
       .maybeSingle();
 
@@ -30,7 +34,7 @@ export async function listActivePerformanceReviewTemplates(): Promise<
   const { data, error } = await supabase
     .from("templates")
     .select("id, name, questions")
-    .eq("type", "performance_review")
+    .eq("type", "peer_360")
     .eq("is_active", true)
     .order("name");
   if (error || !data) return [];

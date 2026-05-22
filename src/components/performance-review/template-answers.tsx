@@ -1,4 +1,5 @@
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
+import { RatingDisplay } from "@/components/templates/rating-display";
 
 function formatAnswer(question: TemplateQuestion, raw: string | undefined) {
   const value = raw?.trim();
@@ -44,6 +45,18 @@ export function TemplateAnswers({
   return (
     <dl className="space-y-4">
       {questions.map((q) => {
+        if (q.kind === "rating_b_1_5") {
+          return (
+            <div key={q.id}>
+              <dt className="text-[13px] font-medium text-foreground/80">
+                {q.label}
+              </dt>
+              <dd className="mt-1">
+                <RatingDisplay value={answers[q.id]} />
+              </dd>
+            </div>
+          );
+        }
         const formatted = formatAnswer(q, answers[q.id]);
         return (
           <div key={q.id}>

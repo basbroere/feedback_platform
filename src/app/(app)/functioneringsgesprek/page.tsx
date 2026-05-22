@@ -15,6 +15,7 @@ import { getTeamMembers } from "@/lib/one-on-ones/queries";
 import { StartPerformanceReviewDialog } from "@/components/performance-review/start-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { PageTitle } from "@/components/ui/page-title";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -26,14 +27,12 @@ export default async function PerformanceReviewIndex() {
   if (persona.role === "hr") {
     return (
       <div className="space-y-6">
-        <header className="space-y-1.5">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-            Functioneringsgesprekken
-          </h1>
-          <p className="text-[14px] text-muted-foreground">
-            HR-aggregaties volgen later. Bekijk lopende gesprekken via /team.
-          </p>
-        </header>
+        <PageTitle
+          icon={ClipboardCheck}
+          tone="amber"
+          title="Functionering"
+          subtitle="HR-aggregaties volgen later."
+        />
       </div>
     );
   }
@@ -73,25 +72,22 @@ export default async function PerformanceReviewIndex() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1.5">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-[32px]">
-            Functioneringsgesprekken
-          </h1>
-          <p className="text-[14px] text-muted-foreground">
-            Halfjaarlijks gesprek waarin we terugkijken op de afgelopen periode
-            en vooruitkijken naar de volgende.
-          </p>
-        </div>
-        {persona.role === "manager" && employeesWithoutOpenReview.length > 0 ? (
-          <StartPerformanceReviewDialog
-            teamMembers={employeesWithoutOpenReview}
-            templates={prTemplates}
-            triggerLabel="Functioneringsgesprek starten"
-            triggerVariant="default"
-          />
-        ) : null}
-      </header>
+      <PageTitle
+        icon={ClipboardCheck}
+        tone="amber"
+        title="Functionering"
+        subtitle="Terugkijken en vooruitkijken, halfjaarlijks."
+        action={
+          persona.role === "manager" && employeesWithoutOpenReview.length > 0 ? (
+            <StartPerformanceReviewDialog
+              teamMembers={employeesWithoutOpenReview}
+              templates={prTemplates}
+              triggerLabel="Gesprek starten"
+              triggerVariant="default"
+            />
+          ) : null
+        }
+      />
 
       {asEmployee.length > 0 ? (
         <section className="space-y-4">

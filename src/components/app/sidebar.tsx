@@ -12,6 +12,8 @@ import {
   MessageCircle,
   MessageSquareText,
   Settings,
+  ShieldCheck,
+  Sliders,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -19,12 +21,14 @@ import { clearPersona } from "@/lib/persona/actions";
 import type { Persona } from "@/lib/persona/types";
 import type { TeamWithMembers } from "@/lib/persona/server";
 import { PersonaSwitcher } from "./persona-switcher";
+import { TONE_BG, type Tone } from "@/lib/ui/tone";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  tone: Tone;
 };
 
 type NavSection = {
@@ -33,31 +37,57 @@ type NavSection = {
 };
 
 function navSections(role: Persona["role"]): NavSection[] {
-  const home: NavItem = { href: "/dashboard", label: "Home", icon: LayoutGrid };
-  const team: NavItem = { href: "/team", label: "Team", icon: UsersRound };
+  const home: NavItem = {
+    href: "/dashboard",
+    label: "Home",
+    icon: LayoutGrid,
+    tone: "primary",
+  };
+  const team: NavItem = {
+    href: "/team",
+    label: "Team",
+    icon: UsersRound,
+    tone: "violet",
+  };
   const actiepunten: NavItem = {
     href: "/actiepunten",
     label: "Actiepunten",
     icon: CheckSquare,
+    tone: "emerald",
   };
   const feedback: NavItem = {
     href: "/feedback",
     label: "Feedback",
     icon: MessageCircle,
+    tone: "primary",
   };
   const eenOpEen: NavItem = {
     href: "/een-op-een",
     label: "1-op-1",
     icon: MessageSquareText,
+    tone: "blue",
   };
   const functioneringsgesprek: NavItem = {
     href: "/functioneringsgesprek",
     label: "Functionering",
     icon: ClipboardCheck,
+    tone: "amber",
   };
 
   if (role === "hr") {
-    return [{ title: "Menu", items: [home, team] }];
+    const templates: NavItem = {
+      href: "/templates",
+      label: "Templates",
+      icon: Sliders,
+      tone: "sky",
+    };
+    const beheer: NavItem = {
+      href: "/beheer",
+      label: "Beheer",
+      icon: ShieldCheck,
+      tone: "rose",
+    };
+    return [{ title: "Menu", items: [home, team, templates, beheer] }];
   }
   if (role === "manager") {
     return [
@@ -114,21 +144,22 @@ export function AppSidebar({
                     <Link
                       href={item.href}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-[14px] font-medium transition-colors",
+                        "group flex items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] font-medium transition-colors",
                         active
-                          ? "bg-primary/8 text-primary"
-                          : "text-foreground/65 hover:bg-sidebar-accent hover:text-foreground",
+                          ? "bg-sidebar-accent text-foreground"
+                          : "text-foreground/65 hover:bg-sidebar-accent/60 hover:text-foreground",
                       )}
                     >
-                      <Icon
+                      <span
                         className={cn(
-                          "h-[18px] w-[18px] shrink-0",
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
                           active
-                            ? "text-primary"
-                            : "text-foreground/50 group-hover:text-foreground/75",
+                            ? TONE_BG[item.tone]
+                            : "text-foreground/55 group-hover:text-foreground/80",
                         )}
-                        strokeWidth={1.75}
-                      />
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={1.75} />
+                      </span>
                       <span>{item.label}</span>
                     </Link>
                   </li>
@@ -147,10 +178,12 @@ export function AppSidebar({
               type="button"
               disabled
               aria-disabled="true"
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-2.5 py-2 text-[14px] font-medium text-foreground/40"
+              className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] font-medium text-foreground/40"
               title="Volgt later"
             >
-              <Settings className="h-[18px] w-[18px] shrink-0 text-foreground/40" strokeWidth={1.75} />
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground/40">
+                <Settings className="h-4 w-4" strokeWidth={1.75} />
+              </span>
               <span>Instellingen</span>
             </button>
           </li>
@@ -159,9 +192,11 @@ export function AppSidebar({
               type="button"
               onClick={() => startTransition(() => clearPersona())}
               disabled={isPending}
-              className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[14px] font-medium text-destructive transition-colors hover:bg-destructive/8 disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] font-medium text-destructive transition-colors hover:bg-destructive/8 disabled:opacity-60"
             >
-              <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-destructive">
+                <LogOut className="h-4 w-4" strokeWidth={1.75} />
+              </span>
               <span>Verlaat persona</span>
             </button>
           </li>

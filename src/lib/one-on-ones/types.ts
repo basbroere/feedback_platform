@@ -3,6 +3,7 @@ export type OneOnOneStatus = "scheduled" | "completed";
 export type TemplateQuestionKind =
   | "open"
   | "scale_1_5"
+  | "rating_b_1_5"
   | "choice_single"
   | "choice_multi";
 
