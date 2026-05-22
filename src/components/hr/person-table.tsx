@@ -88,9 +88,16 @@ export function PersonTable({
                   {u.email}
                 </td>
                 <td className="py-2.5 pr-3">
-                  <Badge variant={ROLE_TONE[u.role]}>
-                    {ROLE_LABEL[u.role]}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant={ROLE_TONE[u.role]}>
+                      {ROLE_LABEL[u.role]}
+                    </Badge>
+                    {u.is_admin ? (
+                      <Badge variant="default" className="text-[10px]">
+                        Beheerder
+                      </Badge>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="py-2.5 pr-3 text-muted-foreground">
                   {u.team_name ?? (
@@ -156,6 +163,7 @@ function EditUserDialog({
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [role, setRole] = useState<UserRole>(user.role);
+  const [isAdmin, setIsAdmin] = useState(user.is_admin);
   const [teamId, setTeamId] = useState<string>(user.team_id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -169,6 +177,7 @@ function EditUserDialog({
           name,
           email,
           role,
+          is_admin: isAdmin,
           teamId: teamId === "" ? null : teamId,
         });
         router.refresh();
@@ -247,6 +256,20 @@ function EditUserDialog({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <input
+              id="edit-admin"
+              type="checkbox"
+              checked={isAdmin}
+              onChange={(e) => setIsAdmin(e.target.checked)}
+              disabled={isPending}
+              className="h-4 w-4 rounded border-input accent-primary"
+            />
+            <Label htmlFor="edit-admin" className="cursor-pointer font-normal">
+              Beheerder
+            </Label>
           </div>
 
           {error ? (

@@ -58,7 +58,7 @@ export function OnYourPlate({
           </p>
         </div>
       ) : (
-        <ul className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <ul className="overflow-hidden rounded-2xl bg-card shadow-sm">
           {ownPrToShow ? <OwnPerformanceReviewRow review={ownPrToShow} /> : null}
           {managerOpenPerformanceReviews.map((r) => (
             <ManagerPerformanceReviewRow key={r.id} review={r} />

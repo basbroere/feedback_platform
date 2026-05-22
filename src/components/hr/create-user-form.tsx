@@ -19,6 +19,7 @@ export function CreateUserForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("employee");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [teamId, setTeamId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
@@ -33,12 +34,14 @@ export function CreateUserForm({
           name,
           email,
           role,
+          is_admin: isAdmin,
           teamId: teamId === "" ? null : teamId,
         });
         setOkMessage(`${name.trim()} is toegevoegd`);
         setName("");
         setEmail("");
         setRole("employee");
+        setIsAdmin(false);
         setTeamId("");
         router.refresh();
       } catch (e) {
@@ -110,6 +113,20 @@ export function CreateUserForm({
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2.5">
+        <input
+          id="user-admin"
+          type="checkbox"
+          checked={isAdmin}
+          onChange={(e) => setIsAdmin(e.target.checked)}
+          disabled={isPending}
+          className="h-4 w-4 rounded border-input accent-primary"
+        />
+        <Label htmlFor="user-admin" className="cursor-pointer font-normal">
+          Beheerder (toegang tot templates en gebruikersbeheer)
+        </Label>
       </div>
 
       {error ? (

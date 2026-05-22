@@ -384,7 +384,7 @@ function StatusCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "rounded-2xl border bg-card p-4 shadow-sm",
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -641,7 +641,7 @@ function CompletedActionItemsList({ items }: { items: DossierActionItem[] }) {
       {items.map((it) => (
         <li
           key={it.id}
-          className="rounded-xl border border-border bg-card px-4 py-3"
+          className="rounded-xl bg-card px-4 py-3 shadow-sm"
         >
           <div className="flex items-start gap-3">
             <span
@@ -800,7 +800,7 @@ function DraftActionItem({
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
+    <div className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
       <span
         aria-hidden
         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background"
@@ -873,7 +873,7 @@ function ActionItemRow({
   return (
     <li
       className={cn(
-        "flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3",
+        "flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm",
         completed && "opacity-70",
       )}
     >

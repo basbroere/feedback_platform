@@ -15,10 +15,11 @@ import {
   listUsersForAdmin,
 } from "@/lib/hr/admin-queries";
 import { CreateTeamForm } from "@/components/hr/create-team-form";
+import { TeamTable } from "@/components/hr/team-table";
 
 export default async function TeamsBeheerPage() {
   const persona = await requirePersona();
-  if (persona.role !== "hr") redirect("/dashboard");
+  if (!persona.is_admin) redirect("/dashboard");
 
   const [teams, users] = await Promise.all([
     listTeamsForAdmin(),
@@ -26,10 +27,7 @@ export default async function TeamsBeheerPage() {
   ]);
 
   const leadOptions = users
-    .filter(
-      (u) =>
-        u.role === "team_lead" || u.role === "manager" || u.role === "hr",
-    )
+    .filter((u) => u.role === "team_lead" || u.role === "manager")
     .map((u) => ({ id: u.id, name: u.name }));
 
   return (
@@ -79,31 +77,7 @@ export default async function TeamsBeheerPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {teams.length === 0 ? (
-            <p className="py-2 text-[13px] text-muted-foreground">
-              Nog geen teams. Maak hierboven het eerste team aan.
-            </p>
-          ) : (
-            <ul className="divide-y divide-border/60">
-              {teams.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-medium">
-                      {t.name}
-                    </p>
-                    <p className="text-[12px] text-muted-foreground">
-                      {t.member_count}{" "}
-                      {t.member_count === 1 ? "lid" : "leden"}
-                      {t.lead_name ? ` · Lead: ${t.lead_name}` : ""}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <TeamTable teams={teams} leadOptions={leadOptions} />
         </CardContent>
       </Card>
     </div>

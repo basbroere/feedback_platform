@@ -216,7 +216,7 @@ export function PerformanceReviewEmployeeSummaryView({
                 {dossierActionItems.map((it) => (
                   <li
                     key={it.id}
-                    className="rounded-xl border border-border bg-card px-4 py-3"
+                    className="rounded-xl bg-card px-4 py-3 shadow-sm"
                   >
                     <p className="text-[14px] leading-snug">{it.description}</p>
                     {it.notes ? (
@@ -354,7 +354,7 @@ function StatusCard({
     skipped: <X className="h-3.5 w-3.5" />,
   }[status];
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {icon}

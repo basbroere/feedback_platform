@@ -21,7 +21,7 @@ export const getCurrentPersona = cache(async (): Promise<Persona | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("users")
-    .select("id, name, email, role, team_id, avatar_url, team:teams!users_team_id_fkey(id, name)")
+    .select("id, name, email, role, is_admin, team_id, avatar_url, team:teams!users_team_id_fkey(id, name)")
     .eq("id", personaId)
     .maybeSingle();
 

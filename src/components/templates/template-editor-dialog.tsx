@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Pencil } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,15 +38,10 @@ const KIND_OPTIONS: {
 }[] = [
   {
     value: "rating_b_1_5",
-    label: "B-rating (1-5)",
+    label: "Bambelo-schaal",
     hint: "Score op 5 B's plus verklaring.",
   },
   { value: "open", label: "Open tekst", hint: "Vrije tekst." },
-  {
-    value: "scale_1_5",
-    label: "Schaal 1-5",
-    hint: "Cijferschaal zonder iconen.",
-  },
   {
     value: "choice_single",
     label: "Keuze (één)",
@@ -183,16 +178,25 @@ export function TemplateEditorDialog(props: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         className={cn(
-          buttonVariants({
-            size: "sm",
-            variant: props.mode === "edit" ? "ghost" : "default",
-          }),
+          props.mode === "edit" && (props as { asMenuItem?: boolean }).asMenuItem
+            ? buttonVariants({ size: "icon", variant: "ghost" })
+            : buttonVariants({
+                size: "sm",
+                variant: props.mode === "edit" ? "ghost" : "default",
+              }),
         )}
+        aria-label={props.mode === "edit" ? "Bewerken" : undefined}
       >
         {props.mode === "create" ? (
-          <Plus className="h-3.5 w-3.5" data-icon="inline-start" />
-        ) : null}
-        <span>{props.triggerLabel ?? (props.mode === "edit" ? "Bewerken" : "Nieuw template")}</span>
+          <>
+            <Plus className="h-3.5 w-3.5" data-icon="inline-start" />
+            <span>{props.triggerLabel ?? "Nieuw template"}</span>
+          </>
+        ) : (props as { asMenuItem?: boolean }).asMenuItem ? (
+          <Pencil className="h-4 w-4" strokeWidth={1.75} />
+        ) : (
+          <span>{props.triggerLabel ?? "Bewerken"}</span>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
@@ -248,7 +252,7 @@ export function TemplateEditorDialog(props: Props) {
               {questions.map((q, idx) => (
                 <li
                   key={q._key}
-                  className="rounded-xl border border-border bg-card p-3 space-y-3"
+                  className="rounded-xl bg-card p-3 space-y-3 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -289,7 +293,7 @@ export function TemplateEditorDialog(props: Props) {
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="grid gap-1.5 sm:col-span-2">
-                      <Label htmlFor={`q-${q._key}-label`}>Label</Label>
+                      <Label htmlFor={`q-${q._key}-label`}>Titel</Label>
                       <Input
                         id={`q-${q._key}-label`}
                         value={q.label}
@@ -297,6 +301,19 @@ export function TemplateEditorDialog(props: Props) {
                           updateQ(q._key, { label: e.target.value })
                         }
                         placeholder="Bijv. Samenwerking"
+                      />
+                    </div>
+
+                    <div className="grid gap-1.5 sm:col-span-2">
+                      <Label htmlFor={`q-${q._key}-hint`}>Toelichting</Label>
+                      <Textarea
+                        id={`q-${q._key}-hint`}
+                        rows={2}
+                        value={q.hint ?? ""}
+                        onChange={(e) =>
+                          updateQ(q._key, { hint: e.target.value })
+                        }
+                        placeholder="Korte uitleg of voorbeeld onder de vraag (optioneel)."
                       />
                     </div>
 
@@ -319,9 +336,7 @@ export function TemplateEditorDialog(props: Props) {
                         ))}
                       </select>
                       <p className="text-[11.5px] text-muted-foreground">
-                        {
-                          KIND_OPTIONS.find((k) => k.value === q.kind)?.hint
-                        }
+                        {KIND_OPTIONS.find((k) => k.value === q.kind)?.hint}
                       </p>
                     </div>
 
@@ -343,40 +358,55 @@ export function TemplateEditorDialog(props: Props) {
                       </Label>
                     </div>
 
-                    <div className="grid gap-1.5 sm:col-span-2">
-                      <Label htmlFor={`q-${q._key}-hint`}>
-                        Hint (optioneel)
-                      </Label>
-                      <Textarea
-                        id={`q-${q._key}-hint`}
-                        rows={2}
-                        value={q.hint ?? ""}
-                        onChange={(e) =>
-                          updateQ(q._key, { hint: e.target.value })
-                        }
-                        placeholder="Korte uitleg of voorbeeld onder de vraag."
-                      />
-                    </div>
-
                     {(q.kind === "choice_single" ||
                       q.kind === "choice_multi") ? (
-                      <div className="grid gap-1.5 sm:col-span-2">
-                        <Label htmlFor={`q-${q._key}-options`}>
-                          Opties (één per regel)
-                        </Label>
-                        <Textarea
-                          id={`q-${q._key}-options`}
-                          rows={3}
-                          value={(q.options ?? []).join("\n")}
-                          onChange={(e) =>
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label>Opties</Label>
+                        <ul className="space-y-1.5">
+                          {(q.options ?? []).map((opt, oi) => (
+                            <li key={oi} className="flex items-center gap-2">
+                              <span className="text-[11px] text-muted-foreground w-4 text-right shrink-0">
+                                {oi + 1}.
+                              </span>
+                              <Input
+                                value={opt}
+                                onChange={(e) => {
+                                  const next = [...(q.options ?? [])];
+                                  next[oi] = e.target.value;
+                                  updateQ(q._key, { options: next });
+                                }}
+                                placeholder={`Optie ${oi + 1}`}
+                                className="h-8 text-sm"
+                              />
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const next = (q.options ?? []).filter((_, i) => i !== oi);
+                                  updateQ(q._key, { options: next });
+                                }}
+                                aria-label="Optie verwijderen"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-fit"
+                          onClick={() =>
                             updateQ(q._key, {
-                              options: e.target.value
-                                .split(/\r?\n/)
-                                .map((s) => s.trim())
-                                .filter(Boolean),
+                              options: [...(q.options ?? []), ""],
                             })
                           }
-                        />
+                        >
+                          <Plus className="h-3.5 w-3.5" data-icon="inline-start" />
+                          Optie toevoegen
+                        </Button>
                       </div>
                     ) : null}
                   </div>

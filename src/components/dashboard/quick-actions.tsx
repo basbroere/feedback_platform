@@ -26,7 +26,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
             <Link
               key={a.href + a.title}
               href={a.href}
-              className="group relative flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md"
+              className="group relative flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm transition-shadow hover:shadow-md"
             >
               <span
                 className={cn(

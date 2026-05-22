@@ -14,10 +14,10 @@ const ALLOWED_KINDS: TemplateQuestion["kind"][] = [
   "choice_multi",
 ];
 
-async function requireHr() {
+async function requireAdmin() {
   const persona = await getCurrentPersona();
   if (!persona) throw new Error("Geen persona geselecteerd");
-  if (persona.role !== "hr") throw new Error("Alleen HR mag templates beheren");
+  if (!persona.is_admin) throw new Error("Alleen beheerders mogen templates beheren");
   return persona;
 }
 
@@ -72,7 +72,7 @@ export async function createTemplate(input: {
   name: string;
   questions: TemplateQuestion[];
 }): Promise<{ id: string }> {
-  await requireHr();
+  await requireAdmin();
   const name = input.name.trim();
   if (!name) throw new Error("Naam is verplicht");
   const questions = normalizeQuestions(input.questions);
@@ -101,7 +101,7 @@ export async function updateTemplate(input: {
   name: string;
   questions: TemplateQuestion[];
 }): Promise<void> {
-  await requireHr();
+  await requireAdmin();
   const name = input.name.trim();
   if (!name) throw new Error("Naam is verplicht");
   const questions = normalizeQuestions(input.questions);
@@ -122,7 +122,7 @@ export async function setTemplateActive(input: {
   id: string;
   is_active: boolean;
 }): Promise<void> {
-  await requireHr();
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase
     .from("templates")
@@ -133,7 +133,7 @@ export async function setTemplateActive(input: {
 }
 
 export async function deleteTemplate(input: { id: string }): Promise<void> {
-  await requireHr();
+  await requireAdmin();
   const supabase = await createClient();
   // Voorkom verwijderen als nog in gebruik; archiveren is de juiste route.
   const ids = [input.id];

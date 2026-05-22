@@ -38,7 +38,7 @@ function FeedbackCard({ item }: { item: FeedbackWithSource }) {
   const date = item.submitted_at ?? item.created_at;
   const snippet = pickSnippet(item);
   return (
-    <li className="relative overflow-hidden rounded-2xl bg-primary/5 px-5 py-4 ring-1 ring-primary/15">
+    <li className="relative overflow-hidden rounded-2xl bg-primary/5 px-5 py-4 shadow-sm">
       <Quote
         className="pointer-events-none absolute right-3 top-3 h-7 w-7 text-primary/15"
         strokeWidth={1.5}

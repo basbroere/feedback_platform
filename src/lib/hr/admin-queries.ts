@@ -8,7 +8,7 @@ export async function listUsersForAdmin(): Promise<AdminUser[]> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "id, name, email, role, avatar_url, team_id, created_at, team:teams!users_team_id_fkey(id, name)",
+      "id, name, email, role, is_admin, avatar_url, team_id, created_at, team:teams!users_team_id_fkey(id, name)",
     )
     .order("role")
     .order("name");
@@ -24,6 +24,7 @@ export async function listUsersForAdmin(): Promise<AdminUser[]> {
     name: row.name,
     email: row.email,
     role: row.role,
+    is_admin: (row as unknown as { is_admin: boolean }).is_admin ?? false,
     avatar_url: row.avatar_url,
     team_id: row.team_id,
     team_name: row.team?.name ?? null,

@@ -24,19 +24,6 @@ import type { PerformanceReviewListItem } from "@/lib/performance-reviews/types"
 export default async function PerformanceReviewIndex() {
   const persona = await requirePersona();
 
-  if (persona.role === "hr") {
-    return (
-      <div className="space-y-6">
-        <PageTitle
-          icon={ClipboardCheck}
-          tone="amber"
-          title="Functionering"
-          subtitle="HR-aggregaties volgen later."
-        />
-      </div>
-    );
-  }
-
   const [asManager, asEmployee, managerTeam, prTemplates] = await Promise.all([
     listPerformanceReviewsForManager(persona.id),
     listPerformanceReviewsForEmployee(persona.id),
@@ -198,7 +185,7 @@ function OwnReviewCard({
 function ManagerReviewCard({ review }: { review: PerformanceReviewListItem }) {
   const isCompleted = review.status === "completed";
   return (
-    <li className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <li className="rounded-2xl bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <PersonAvatar
@@ -255,7 +242,7 @@ function CompletedRow({
     <li>
       <Link
         href={`/functioneringsgesprek/${review.id}`}
-        className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+        className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 shadow-sm transition-colors hover:bg-accent"
       >
         <CircleCheck className="h-4 w-4 text-emerald-500" />
         <div className="min-w-0 flex-1">

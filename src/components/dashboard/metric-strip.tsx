@@ -19,7 +19,7 @@ export function MetricCards({ metrics }: { metrics: MetricCard[] }) {
         return (
           <div
             key={m.label}
-            className="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            className="flex items-center gap-4 rounded-2xl bg-card px-5 py-4 shadow-sm"
           >
             <span
               className={cn(

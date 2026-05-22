@@ -213,9 +213,8 @@ export async function getRecentCompletedOneOnOnesForManager(
 
 export async function getLatestCompletedOneOnOneForUser(
   userId: string,
-  role: "employee" | "team_lead" | "manager" | "hr",
+  role: "employee" | "team_lead" | "manager",
 ): Promise<{ id: string; completed_at: string } | null> {
-  if (role === "hr") return null;
   const supabase = await createClient();
   const column = role === "manager" ? "manager_id" : "employee_id";
   const { data, error } = await supabase

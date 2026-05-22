@@ -36,69 +36,32 @@ type NavSection = {
   items: NavItem[];
 };
 
-function navSections(role: Persona["role"]): NavSection[] {
-  const home: NavItem = {
-    href: "/dashboard",
-    label: "Home",
-    icon: LayoutGrid,
-    tone: "primary",
-  };
-  const team: NavItem = {
-    href: "/team",
-    label: "Team",
-    icon: UsersRound,
-    tone: "violet",
-  };
-  const actiepunten: NavItem = {
-    href: "/actiepunten",
-    label: "Actiepunten",
-    icon: CheckSquare,
-    tone: "emerald",
-  };
-  const feedback: NavItem = {
-    href: "/feedback",
-    label: "Feedback",
-    icon: MessageCircle,
-    tone: "primary",
-  };
-  const eenOpEen: NavItem = {
-    href: "/een-op-een",
-    label: "1-op-1",
-    icon: MessageSquareText,
-    tone: "blue",
-  };
-  const functioneringsgesprek: NavItem = {
-    href: "/functioneringsgesprek",
-    label: "Functionering",
-    icon: ClipboardCheck,
-    tone: "amber",
-  };
+function navSections(persona: Persona): NavSection[] {
+  const home: NavItem = { href: "/dashboard", label: "Home", icon: LayoutGrid, tone: "primary" };
+  const team: NavItem = { href: "/team", label: "Team", icon: UsersRound, tone: "violet" };
+  const actiepunten: NavItem = { href: "/actiepunten", label: "Actiepunten", icon: CheckSquare, tone: "emerald" };
+  const feedback: NavItem = { href: "/feedback", label: "Feedback", icon: MessageCircle, tone: "primary" };
+  const eenOpEen: NavItem = { href: "/een-op-een", label: "1-op-1", icon: MessageSquareText, tone: "blue" };
+  const functioneringsgesprek: NavItem = { href: "/functioneringsgesprek", label: "Functionering", icon: ClipboardCheck, tone: "amber" };
+  const templates: NavItem = { href: "/templates", label: "Templates", icon: Sliders, tone: "sky" };
+  const beheer: NavItem = { href: "/beheer", label: "Beheer", icon: ShieldCheck, tone: "rose" };
 
-  if (role === "hr") {
-    const templates: NavItem = {
-      href: "/templates",
-      label: "Templates",
-      icon: Sliders,
-      tone: "sky",
-    };
-    const beheer: NavItem = {
-      href: "/beheer",
-      label: "Beheer",
-      icon: ShieldCheck,
-      tone: "rose",
-    };
-    return [{ title: "Menu", items: [home, team, templates, beheer] }];
+  const sections: NavSection[] =
+    persona.role === "manager"
+      ? [
+          { title: "Menu", items: [home, actiepunten, feedback, team] },
+          { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
+        ]
+      : [
+          { title: "Menu", items: [home, actiepunten, feedback] },
+          { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
+        ];
+
+  if (persona.is_admin) {
+    sections.push({ title: "Beheer", items: [templates, beheer] });
   }
-  if (role === "manager") {
-    return [
-      { title: "Menu", items: [home, actiepunten, feedback, team] },
-      { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
-    ];
-  }
-  return [
-    { title: "Menu", items: [home, actiepunten, feedback] },
-    { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
-  ];
+
+  return sections;
 }
 
 export function AppSidebar({
@@ -109,11 +72,11 @@ export function AppSidebar({
   teams: TeamWithMembers[];
 }) {
   const pathname = usePathname();
-  const sections = navSections(persona.role);
+  const sections = navSections(persona);
   const [isPending, startTransition] = useTransition();
 
   return (
-    <aside className="sticky top-0 hidden h-svh w-[244px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+    <aside className="sticky top-0 hidden h-svh w-[244px] shrink-0 flex-col bg-sidebar shadow-[1px_0_12px_0_rgba(0,0,0,0.06)] md:flex">
       <div className="px-5 pt-7 pb-8">
         <Link href="/dashboard" className="inline-flex items-center" aria-label="Bambelo">
           <Image
@@ -170,7 +133,7 @@ export function AppSidebar({
         ))}
       </div>
 
-      <div className="space-y-3 border-t border-sidebar-border/80 px-4 py-4">
+      <div className="space-y-3 border-t border-sidebar-border/40 px-4 py-4">
         <PersonaSwitcher current={persona} teams={teams} />
         <ul className="space-y-0.5">
           <li>

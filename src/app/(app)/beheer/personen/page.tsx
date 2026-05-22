@@ -19,7 +19,7 @@ import { PersonTable } from "@/components/hr/person-table";
 
 export default async function PersonenBeheerPage() {
   const persona = await requirePersona();
-  if (persona.role !== "hr") redirect("/dashboard");
+  if (!persona.is_admin) redirect("/dashboard");
 
   const [users, teams] = await Promise.all([
     listUsersForAdmin(),

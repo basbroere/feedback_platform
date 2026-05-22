@@ -5,6 +5,7 @@ export type AdminUser = {
   name: string;
   email: string;
   role: UserRole;
+  is_admin: boolean;
   avatar_url: string | null;
   team_id: string | null;
   team_name: string | null;

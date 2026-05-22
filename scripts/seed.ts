@@ -21,7 +21,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-type Role = "employee" | "manager" | "hr";
+type Role = "employee" | "manager";
 
 type SeedUser = {
   name: string;
@@ -67,7 +67,7 @@ const USERS: SeedUser[] = [
   { name: "Noah Klein", email: "noah.klein@bambelo.nl", role: "employee", teamName: "Marketing" },
 
   // HR
-  { name: "Sofie van Dam", email: "sofie.vandam@bambelo.nl", role: "hr", teamName: "HR" },
+  { name: "Sofie van Dam", email: "sofie.vandam@bambelo.nl", role: "employee", teamName: "HR" },
   { name: "Bram Kuijpers", email: "bram.kuijpers@bambelo.nl", role: "employee", teamName: "HR" },
   { name: "Isabel Mendes", email: "isabel.mendes@bambelo.nl", role: "employee", teamName: "HR" },
 ];
@@ -456,7 +456,7 @@ async function seedOneOnOnes({
     if (!teamId) continue;
     const teamUsers = users.filter((u) => u.team_id === teamId);
     const manager = teamUsers.find(
-      (u) => u.role === "manager" || u.role === "hr",
+      (u) => u.role === "manager",
     );
     if (!manager) continue;
     for (const emp of teamUsers) {

@@ -5,12 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersona } from "@/lib/persona/server";
 import type { UserRole } from "@/lib/persona/types";
 
-const ROLES: UserRole[] = ["employee", "team_lead", "manager", "hr"];
+const ROLES: UserRole[] = ["employee", "team_lead", "manager"];
 
-async function requireHr(): Promise<string> {
+async function requireAdmin(): Promise<string> {
   const persona = await getCurrentPersona();
   if (!persona) throw new Error("Geen persona geselecteerd");
-  if (persona.role !== "hr") throw new Error("Alleen HR kan deze actie uitvoeren");
+  if (!persona.is_admin) throw new Error("Alleen beheerders kunnen deze actie uitvoeren");
   return persona.id;
 }
 
@@ -44,9 +44,10 @@ export async function createUser(input: {
   name: string;
   email: string;
   role: UserRole;
+  is_admin: boolean;
   teamId: string | null;
 }): Promise<{ id: string }> {
-  await requireHr();
+  await requireAdmin();
 
   const name = input.name.trim();
   const email = normaliseEmail(input.email);
@@ -78,6 +79,7 @@ export async function createUser(input: {
       name,
       email,
       role: input.role,
+      is_admin: input.is_admin,
       team_id: input.teamId,
     })
     .select("id")
@@ -93,9 +95,10 @@ export async function updateUser(input: {
   name: string;
   email: string;
   role: UserRole;
+  is_admin: boolean;
   teamId: string | null;
 }): Promise<void> {
-  await requireHr();
+  const adminId = await requireAdmin();
 
   const name = input.name.trim();
   const email = normaliseEmail(input.email);
@@ -107,10 +110,21 @@ export async function updateUser(input: {
 
   const { data: current } = await supabase
     .from("users")
-    .select("id, email")
+    .select("id, email, is_admin")
     .eq("id", input.id)
     .maybeSingle();
   if (!current) throw new Error("Gebruiker niet gevonden");
+
+  // Voorkom dat de laatste beheerder zichzelf de beheerderstatus ontneemt
+  if ((current as unknown as { is_admin: boolean }).is_admin && !input.is_admin) {
+    const { count } = await supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("is_admin", true);
+    if ((count ?? 0) <= 1) {
+      throw new Error("Er moet altijd minimaal één beheerder zijn");
+    }
+  }
 
   if (current.email !== email) {
     const { data: existing } = await supabase
@@ -138,17 +152,19 @@ export async function updateUser(input: {
       name,
       email,
       role: input.role,
+      is_admin: input.is_admin,
       team_id: input.teamId,
     })
     .eq("id", input.id);
   if (error) throw new Error(error.message);
 
   revalidateBeheer();
+  void adminId;
 }
 
 export async function deleteUser(input: { id: string }): Promise<void> {
-  const personaId = await requireHr();
-  if (personaId === input.id) {
+  const adminId = await requireAdmin();
+  if (adminId === input.id) {
     throw new Error("Je kunt je eigen account niet verwijderen");
   }
 
@@ -156,18 +172,18 @@ export async function deleteUser(input: { id: string }): Promise<void> {
 
   const { data: target } = await supabase
     .from("users")
-    .select("id, role")
+    .select("id, is_admin")
     .eq("id", input.id)
     .maybeSingle();
   if (!target) throw new Error("Gebruiker niet gevonden");
 
-  if (target.role === "hr") {
+  if ((target as unknown as { is_admin: boolean }).is_admin) {
     const { count } = await supabase
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("role", "hr");
+      .eq("is_admin", true);
     if ((count ?? 0) <= 1) {
-      throw new Error("Laatste HR-gebruiker kan niet verwijderd worden");
+      throw new Error("Laatste beheerder kan niet verwijderd worden");
     }
   }
 
@@ -181,7 +197,7 @@ export async function createTeam(input: {
   name: string;
   leadUserId: string | null;
 }): Promise<{ id: string }> {
-  await requireHr();
+  await requireAdmin();
 
   const name = input.name.trim();
   if (!name) throw new Error("Vul een teamnaam in");
@@ -199,14 +215,53 @@ export async function createTeam(input: {
 
   const { data, error } = await supabase
     .from("teams")
-    .insert({
-      name,
-      lead_user_id: input.leadUserId,
-    })
+    .insert({ name, lead_user_id: input.leadUserId })
     .select("id")
     .single();
   if (error || !data) throw new Error(error?.message ?? "Aanmaken mislukt");
 
   revalidateBeheer();
   return { id: data.id };
+}
+
+export async function updateTeam(input: {
+  id: string;
+  name: string;
+  leadUserId: string | null;
+}): Promise<void> {
+  await requireAdmin();
+
+  const name = input.name.trim();
+  if (!name) throw new Error("Vul een teamnaam in");
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("teams")
+    .update({ name, lead_user_id: input.leadUserId })
+    .eq("id", input.id);
+  if (error) throw new Error(error.message);
+
+  revalidateBeheer();
+}
+
+export async function deleteTeam(input: { id: string }): Promise<void> {
+  await requireAdmin();
+
+  const supabase = await createClient();
+
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id, name")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (!team) throw new Error("Team niet gevonden");
+
+  // Verwijder teamkoppeling van leden zodat de FK geen blokkade geeft.
+  await supabase.from("users").update({ team_id: null }).eq("team_id", input.id);
+
+  const { error } = await supabase.from("teams").delete().eq("id", input.id);
+  if (error) throw new Error(error.message);
+
+  revalidateBeheer();
 }

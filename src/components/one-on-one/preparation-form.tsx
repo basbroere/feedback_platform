@@ -150,7 +150,7 @@ function PreparationActionItems({
           <li
             key={item.id}
             className={cn(
-              "flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3",
+              "flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm",
               (completed || expired) && "opacity-70",
             )}
           >

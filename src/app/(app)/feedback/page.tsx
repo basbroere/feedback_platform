@@ -8,12 +8,14 @@ export default async function FeedbackPage() {
   const feedback = await getFeedbackForEmployee(persona.id);
 
   const crossTeamCount = feedback.filter((f) => f.is_cross_team).length;
+  const latestDate = feedback[0]?.submitted_at ?? feedback[0]?.created_at ?? null;
 
   return (
     <div className="space-y-8">
       <FeedbackHeader
         totalReceived={feedback.length}
         crossTeamCount={crossTeamCount}
+        latestDate={latestDate}
       />
 
       <section>

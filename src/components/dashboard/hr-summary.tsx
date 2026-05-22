@@ -101,7 +101,7 @@ function Tile({
   label: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-3 rounded-2xl bg-card px-5 py-4 shadow-sm">
       <span
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg",
@@ -136,7 +136,7 @@ function BeheerLink({
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md"
+      className="group flex items-start gap-3 rounded-2xl bg-card px-5 py-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <span
         className={cn(
