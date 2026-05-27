@@ -26,7 +26,9 @@ export default async function VoorbereidenPerformanceReviewPage({
   if (review.completed_at) redirect(`/functioneringsgesprek/${id}`);
 
   const isAlreadyFinalized =
-    review.status !== "draft";
+    review.status === "collecting_input" ||
+    review.status === "ready_for_meeting" ||
+    review.status === "completed";
 
   const [template, cycleInputs, teams] = await Promise.all([
     review.template_id ? getTemplateById(review.template_id) : Promise.resolve(null),

@@ -183,7 +183,6 @@ export async function submitFeedbackResponse(input: {
     if (
       pr &&
       pr.status !== "ready_for_meeting" &&
-      pr.status !== "scheduled" &&
       pr.status !== "completed" &&
       pr.status !== "cancelled"
     ) {
