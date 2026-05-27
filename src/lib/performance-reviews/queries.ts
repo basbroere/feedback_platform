@@ -21,10 +21,10 @@ const PERSON_COLS = "id, name, avatar_url";
 const TEMPLATE_COLS = "id, name, questions";
 
 const SAFE_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, employee_self_evaluation, shared_summary";
+  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, shared_summary";
 
 const FULL_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
+  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
 
 const SIX_MONTHS_DAYS = 182;
 
@@ -36,6 +36,7 @@ type RawPerformanceReviewRow = {
   status: PerformanceReviewStatus;
   cycle_started_at: string;
   completed_at: string | null;
+  scheduled_at: string | null;
   employee_self_evaluation: Record<string, string> | null;
   manager_preparation?: Record<string, string> | null;
   manager_private_notes?: string | null;
@@ -54,6 +55,7 @@ function mapFull(row: RawPerformanceReviewRow): PerformanceReviewFull {
     status: row.status,
     cycle_started_at: row.cycle_started_at,
     completed_at: row.completed_at,
+    scheduled_at: row.scheduled_at ?? null,
     employee_self_evaluation: row.employee_self_evaluation ?? {},
     manager_preparation: row.manager_preparation ?? {},
     manager_private_notes: row.manager_private_notes ?? null,
@@ -123,6 +125,7 @@ type RawListRow = {
   status: PerformanceReviewStatus;
   cycle_started_at: string;
   completed_at: string | null;
+  scheduled_at: string | null;
   employee_self_evaluation: Record<string, string> | null;
   manager_preparation: Record<string, string> | null;
   template: { name: string } | null;
@@ -130,13 +133,18 @@ type RawListRow = {
   manager: PersonRef | null;
 };
 
-function mapListRow(row: RawListRow): PerformanceReviewListItem | null {
+function mapListRow(
+  row: RawListRow,
+  feedbackStats?: Map<string, { has_peer_submitted: boolean; has_manager_submitted: boolean }>,
+): PerformanceReviewListItem | null {
   if (!row.employee || !row.manager) return null;
+  const stats = feedbackStats?.get(row.id);
   return {
     id: row.id,
     status: row.status,
     cycle_started_at: row.cycle_started_at,
     completed_at: row.completed_at,
+    scheduled_at: row.scheduled_at ?? null,
     template_name: row.template?.name ?? null,
     has_employee_input:
       Object.values(row.employee_self_evaluation ?? {}).some(
@@ -146,12 +154,45 @@ function mapListRow(row: RawListRow): PerformanceReviewListItem | null {
       Object.values(row.manager_preparation ?? {}).some(
         (v) => typeof v === "string" && v.trim().length > 0,
       ) ?? false,
+    has_peer_submitted: stats?.has_peer_submitted ?? false,
+    has_manager_submitted: stats?.has_manager_submitted ?? false,
     employee: row.employee,
     manager: row.manager,
   };
 }
 
-const LIST_COLS = `id, status, cycle_started_at, completed_at, employee_self_evaluation, manager_preparation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
+const LIST_COLS = `id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
+
+async function batchFeedbackStats(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  prIds: string[],
+  managerIds: Map<string, string>,
+  employeeIds: Map<string, string>,
+): Promise<Map<string, { has_peer_submitted: boolean; has_manager_submitted: boolean }>> {
+  if (!prIds.length) return new Map();
+  const { data } = await supabase
+    .from("feedback")
+    .select("source_id, author_id, status")
+    .eq("source_type", "performance_review")
+    .in("source_id", prIds)
+    .eq("status", "submitted");
+
+  type Row = { source_id: string; author_id: string; status: string };
+  const rows = (data ?? []) as Row[];
+  const result = new Map<string, { has_peer_submitted: boolean; has_manager_submitted: boolean }>();
+  for (const prId of prIds) {
+    const managerId = managerIds.get(prId);
+    const employeeId = employeeIds.get(prId);
+    const prRows = rows.filter((r) => r.source_id === prId);
+    result.set(prId, {
+      has_manager_submitted: prRows.some((r) => r.author_id === managerId),
+      has_peer_submitted: prRows.some(
+        (r) => r.author_id !== managerId && r.author_id !== employeeId,
+      ),
+    });
+  }
+  return result;
+}
 
 export async function listPerformanceReviewsForManager(
   managerId: string,
@@ -163,8 +204,13 @@ export async function listPerformanceReviewsForManager(
     .eq("manager_id", managerId)
     .order("cycle_started_at", { ascending: false });
   if (error || !data) return [];
-  return (data as unknown as RawListRow[])
-    .map(mapListRow)
+  const rows = data as unknown as RawListRow[];
+  const prIds = rows.map((r) => r.id);
+  const managerIds = new Map(rows.map((r) => [r.id, managerId]));
+  const employeeIds = new Map(rows.map((r) => [r.id, r.employee?.id ?? ""]));
+  const stats = await batchFeedbackStats(supabase, prIds, managerIds, employeeIds);
+  return rows
+    .map((r) => mapListRow(r, stats))
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }
 
@@ -180,8 +226,13 @@ export async function listPerformanceReviewsBetween(
     .eq("employee_id", employeeId)
     .order("cycle_started_at", { ascending: false });
   if (error || !data) return [];
-  return (data as unknown as RawListRow[])
-    .map(mapListRow)
+  const rows = data as unknown as RawListRow[];
+  const prIds = rows.map((r) => r.id);
+  const managerIds = new Map(rows.map((r) => [r.id, managerId]));
+  const employeeIds = new Map(rows.map((r) => [r.id, employeeId]));
+  const stats = await batchFeedbackStats(supabase, prIds, managerIds, employeeIds);
+  return rows
+    .map((r) => mapListRow(r, stats))
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }
 
@@ -196,7 +247,7 @@ export async function listPerformanceReviewsForEmployee(
     .order("cycle_started_at", { ascending: false });
   if (error || !data) return [];
   return (data as unknown as RawListRow[])
-    .map(mapListRow)
+    .map((r) => mapListRow(r))
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }
 
@@ -374,11 +425,34 @@ export async function getUpcomingPerformanceReviewForEmployee(
   return mapListRow(data[0] as unknown as RawListRow);
 }
 
+export async function listScheduledPerformanceReviewsForManager(
+  managerId: string,
+): Promise<PerformanceReviewListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_reviews")
+    .select(LIST_COLS)
+    .eq("manager_id", managerId)
+    .eq("status", "scheduled")
+    .order("scheduled_at", { ascending: true });
+  if (error || !data) return [];
+  const rows = data as unknown as RawListRow[];
+  const prIds = rows.map((r) => r.id);
+  const managerIds = new Map(rows.map((r) => [r.id, managerId]));
+  const employeeIds = new Map(rows.map((r) => [r.id, r.employee?.id ?? ""]));
+  const stats = await batchFeedbackStats(supabase, prIds, managerIds, employeeIds);
+  return rows
+    .map((r) => mapListRow(r, stats))
+    .filter((r): r is PerformanceReviewListItem => r !== null);
+}
+
 // Haalt de peer- en manager-feedback-rijen op die bij deze cyclus horen.
 // Peer = author die niet de manager en niet de medewerker is.
 // Manager = author die de manager_id van de cyclus is.
+// hideUntilManagerSubmits: als true, wordt peer-rij verborgen als manager nog niet submitted heeft.
 export async function getCycleInputs(
   performanceReviewId: string,
+  options?: { hideUntilManagerSubmits?: boolean },
 ): Promise<CycleInputs> {
   const supabase = await createClient();
   const { data: pr } = await supabase
@@ -434,6 +508,12 @@ export async function getCycleInputs(
     };
   }
 
+  const managerHasSubmitted = managerRow?.status === "submitted";
+
+  if (options?.hideUntilManagerSubmits && !managerHasSubmitted) {
+    return { peer: null, manager: toCycle(managerRow) };
+  }
+
   return { peer: toCycle(peerRow), manager: toCycle(managerRow) };
 }
 
@@ -449,7 +529,12 @@ export async function listOpenPerformanceReviewsForManager(
     .neq("status", "cancelled")
     .order("cycle_started_at", { ascending: false });
   if (error || !data) return [];
-  return (data as unknown as RawListRow[])
-    .map(mapListRow)
+  const rows = data as unknown as RawListRow[];
+  const prIds = rows.map((r) => r.id);
+  const managerIds = new Map(rows.map((r) => [r.id, managerId]));
+  const employeeIds = new Map(rows.map((r) => [r.id, r.employee?.id ?? ""]));
+  const stats = await batchFeedbackStats(supabase, prIds, managerIds, employeeIds);
+  return rows
+    .map((r) => mapListRow(r, stats))
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }

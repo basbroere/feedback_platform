@@ -15,6 +15,7 @@ import { getDossierForEmployee } from "@/lib/action-items/queries";
 import {
   getUpcomingPerformanceReviewForEmployee,
   listOpenPerformanceReviewsForManager,
+  listScheduledPerformanceReviewsForManager,
 } from "@/lib/performance-reviews/queries";
 import { DashboardViewSwitcher } from "@/components/dashboard/dashboard-view-switcher";
 import { formatDate } from "@/lib/format";
@@ -57,6 +58,7 @@ async function PersonView({ persona }: { persona: Persona }) {
     teamMembers,
     ownOpenPerformanceReview,
     managerOpenPerformanceReviews,
+    scheduledPerformanceReviews,
   ] = await Promise.all([
     getUpcomingOneOnOneForEmployee(persona.id),
     isManager ? getUpcomingOneOnOnesForManager(persona.id) : Promise.resolve([]),
@@ -68,6 +70,7 @@ async function PersonView({ persona }: { persona: Persona }) {
     isManager ? getTeamMembers(persona.id) : Promise.resolve([]),
     getUpcomingPerformanceReviewForEmployee(persona.id),
     isManager ? listOpenPerformanceReviewsForManager(persona.id) : Promise.resolve([]),
+    isManager ? listScheduledPerformanceReviewsForManager(persona.id) : Promise.resolve([]),
   ]);
 
   const subtitle = buildSubtitle({
@@ -89,6 +92,7 @@ async function PersonView({ persona }: { persona: Persona }) {
         teamMembers,
         ownOpenPerformanceReview,
         managerOpenPerformanceReviews,
+        scheduledPerformanceReviews,
         subtitle,
       }}
     />

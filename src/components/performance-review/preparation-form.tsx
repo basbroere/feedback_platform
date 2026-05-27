@@ -22,7 +22,7 @@ export function PerformanceReviewPreparationForm({
   performanceReviewId: string;
   template: PerformanceReviewTemplate | null;
   initialAnswers: Record<string, string>;
-  redirectTo: string;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -46,7 +46,11 @@ export function PerformanceReviewPreparationForm({
           answers,
         });
         setSaved(true);
-        router.push(redirectTo);
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          router.refresh();
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Opslaan mislukt");
       }

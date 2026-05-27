@@ -9,6 +9,7 @@ export type PerformanceReviewStatus =
   | "draft"
   | "collecting_input"
   | "ready_for_meeting"
+  | "scheduled"
   | "completed"
   | "cancelled";
 
@@ -23,9 +24,12 @@ export type PerformanceReviewListItem = {
   status: PerformanceReviewStatus;
   cycle_started_at: string;
   completed_at: string | null;
+  scheduled_at: string | null;
   template_name: string | null;
   has_employee_input: boolean;
   has_manager_input: boolean;
+  has_peer_submitted: boolean;
+  has_manager_submitted: boolean;
   employee: PersonRef;
   manager: PersonRef;
 };
@@ -38,6 +42,7 @@ export type PerformanceReviewFull = {
   status: PerformanceReviewStatus;
   cycle_started_at: string;
   completed_at: string | null;
+  scheduled_at: string | null;
   employee_self_evaluation: Record<string, string>;
   manager_preparation: Record<string, string>;
   manager_private_notes: string | null;

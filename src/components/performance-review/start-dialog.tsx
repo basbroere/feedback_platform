@@ -56,6 +56,7 @@ export function StartPerformanceReviewDialog(props: Props) {
   const [templateId, setTemplateId] = useState<string>(
     templates[0]?.id ?? "",
   );
+  const [scheduledAt, setScheduledAt] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +72,16 @@ export function StartPerformanceReviewDialog(props: Props) {
       setError("Kies een teamlid.");
       return;
     }
+    if (!scheduledAt) {
+      setError("Kies een datum voor het gesprek.");
+      return;
+    }
     startTransition(async () => {
       try {
         const { id } = await startPerformanceReview({
           employeeId,
           templateId: templateId || null,
+          scheduledAt: new Date(scheduledAt).toISOString(),
         });
         setOpen(false);
         router.push(`/functioneringsgesprek/${id}`);
@@ -131,6 +137,20 @@ export function StartPerformanceReviewDialog(props: Props) {
               )}
             </div>
           ) : null}
+
+          <div className="grid gap-2">
+            <Label htmlFor="pr-date">Datum gesprek</Label>
+            <input
+              id="pr-date"
+              type="date"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+            />
+            <p className="text-[12.5px] text-muted-foreground">
+              Je kunt dit later nog wijzigen.
+            </p>
+          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="pr-template">Template</Label>
