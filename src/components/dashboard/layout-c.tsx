@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  CalendarClock,
   CalendarPlus,
   CheckSquare,
   ClipboardCheck,
@@ -8,87 +9,216 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { DashboardData } from "./dashboard-view-switcher";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatDateTime, formatRelativeWeeks } from "@/lib/format";
-import { TONE_BG } from "@/lib/ui/tone";
+import { TONE_BG, type Tone } from "@/lib/ui/tone";
 import { cn } from "@/lib/utils";
 
-type AgendaRow = {
+type PlateItem = {
   key: string;
-  personId: string;
-  personName: string;
-  avatarUrl: string | null;
-  date: string;
-  type: "1-op-1" | "Functionering";
+  leading: React.ReactNode;
+  title: React.ReactNode;
+  meta: string;
+  cta: string;
   href: string;
 };
 
-function buildAgenda(data: DashboardData): AgendaRow[] {
-  const rows: AgendaRow[] = [];
+const BADGE: Record<string, string> = {
+  blue: "bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300",
+  violet: "bg-violet-100 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300",
+  amber: "bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300",
+  primary: "bg-primary/15 text-primary",
+};
+
+function IconLead({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
+  return (
+    <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TONE_BG[tone])}>
+      <Icon className="h-4 w-4" strokeWidth={1.75} />
+    </span>
+  );
+}
+
+function AvatarLead({
+  id, name, avatarUrl, badge: BadgeIcon, badgeTone,
+}: {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  badge: LucideIcon;
+  badgeTone: keyof typeof BADGE;
+}) {
+  return (
+    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+      <PersonAvatar id={id} name={name} avatarUrl={avatarUrl} />
+      <span className={cn(
+        "absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-card",
+        BADGE[badgeTone],
+      )}>
+        <BadgeIcon className="h-2.5 w-2.5" strokeWidth={2} />
+      </span>
+    </span>
+  );
+}
+
+function buildGesprekken(data: DashboardData): PlateItem[] {
+  const items: PlateItem[] = [];
 
   if (data.upcoming) {
-    rows.push({
+    items.push({
       key: data.upcoming.id,
-      personId: data.persona.id,
-      personName: data.persona.name,
-      avatarUrl: data.persona.avatar_url,
-      date: formatDateTime(data.upcoming.scheduled_at),
-      type: "1-op-1",
+      leading: <IconLead icon={CalendarClock} tone="blue" />,
+      title: data.upcoming.subject || "1-op-1",
+      meta: formatDateTime(data.upcoming.scheduled_at),
+      cta: "Voorbereiden",
       href: `/een-op-een/${data.upcoming.id}/voorbereiden`,
     });
   }
 
+  // Medewerker: ingepland of klaar voor gesprek
+  const ownScheduled =
+    data.ownOpenPerformanceReview?.status === "scheduled" ||
+    data.ownOpenPerformanceReview?.status === "ready_for_meeting"
+      ? data.ownOpenPerformanceReview
+      : null;
+  if (ownScheduled) {
+    items.push({
+      key: `pr-own-sched-${ownScheduled.id}`,
+      leading: <IconLead icon={ClipboardCheck} tone="amber" />,
+      title: `Functioneringsgesprek met ${ownScheduled.manager.name}`,
+      meta: ownScheduled.scheduled_at ? formatDateTime(ownScheduled.scheduled_at) : "Ingepland",
+      cta: "Bekijken",
+      href: `/functioneringsgesprek/${ownScheduled.id}`,
+    });
+  }
+
   for (const m of data.managerUpcoming) {
-    rows.push({
+    items.push({
       key: m.id,
-      personId: m.employee.id,
-      personName: m.employee.name,
-      avatarUrl: m.employee.avatar_url,
-      date: formatDateTime(m.scheduled_at),
-      type: "1-op-1",
+      leading: <AvatarLead id={m.employee.id} name={m.employee.name} avatarUrl={m.employee.avatar_url} badge={UsersRound} badgeTone="violet" />,
+      title: <><span className="font-semibold">{m.employee.name}</span>{" · 1-op-1"}</>,
+      meta: formatDateTime(m.scheduled_at),
+      cta: "Openen",
       href: `/een-op-een/${m.id}`,
     });
   }
 
-  const ownPr =
-    data.ownOpenPerformanceReview && !data.ownOpenPerformanceReview.has_employee_input
-      ? data.ownOpenPerformanceReview
-      : null;
-
-  if (ownPr) {
-    rows.push({
-      key: ownPr.id,
-      personId: ownPr.manager.id,
-      personName: ownPr.manager.name,
-      avatarUrl: null,
-      date: "Zelfevaluatie open",
-      type: "Functionering",
-      href: `/functioneringsgesprek/${ownPr.id}/voorbereiden`,
-    });
-  }
-
-  for (const r of data.managerOpenPerformanceReviews) {
-    rows.push({
-      key: `pr-${r.id}`,
-      personId: r.employee.id,
-      personName: r.employee.name,
-      avatarUrl: r.employee.avatar_url,
-      date: r.has_employee_input ? "Zelfevaluatie binnen" : "Wacht op input",
-      type: "Functionering",
+  for (const r of data.scheduledPerformanceReviews) {
+    items.push({
+      key: `pr-sched-${r.id}`,
+      leading: <AvatarLead id={r.employee.id} name={r.employee.name} avatarUrl={r.employee.avatar_url} badge={ClipboardCheck} badgeTone="amber" />,
+      title: <><span className="font-semibold">{r.employee.name}</span>{" · Functioneringsgesprek"}</>,
+      meta: r.scheduled_at ? formatDateTime(r.scheduled_at) : "Ingepland",
+      cta: "Openen",
       href: `/functioneringsgesprek/${r.id}`,
     });
   }
 
-  return rows;
+  for (const r of data.managerOpenPerformanceReviews.filter(
+    (r) => r.status !== "scheduled" && r.status !== "ready_for_meeting",
+  )) {
+    items.push({
+      key: `pr-${r.id}`,
+      leading: <AvatarLead id={r.employee.id} name={r.employee.name} avatarUrl={r.employee.avatar_url} badge={ClipboardCheck} badgeTone="amber" />,
+      title: <><span className="font-semibold">{r.employee.name}</span>{" · Functioneringsgesprek"}</>,
+      meta: r.has_employee_input ? "Zelfevaluatie binnen" : "Wacht op zelfevaluatie",
+      cta: "Openen",
+      href: `/functioneringsgesprek/${r.id}`,
+    });
+  }
+
+  for (const r of data.managerOpenPerformanceReviews.filter(
+    (r) => r.status === "ready_for_meeting",
+  )) {
+    items.push({
+      key: `pr-ready-${r.id}`,
+      leading: <AvatarLead id={r.employee.id} name={r.employee.name} avatarUrl={r.employee.avatar_url} badge={ClipboardCheck} badgeTone="amber" />,
+      title: <><span className="font-semibold">{r.employee.name}</span>{" · Functioneringsgesprek"}</>,
+      meta: r.scheduled_at ? formatDateTime(r.scheduled_at) : "Alle feedback binnen",
+      cta: "Openen",
+      href: `/functioneringsgesprek/${r.id}`,
+    });
+  }
+
+  return items;
+}
+
+function buildTaken(data: DashboardData): PlateItem[] {
+  const items: PlateItem[] = [];
+
+  const ownPr =
+    data.ownOpenPerformanceReview &&
+    !data.ownOpenPerformanceReview.has_employee_input &&
+    data.ownOpenPerformanceReview.status !== "scheduled" &&
+    data.ownOpenPerformanceReview.status !== "ready_for_meeting"
+      ? data.ownOpenPerformanceReview
+      : null;
+
+  if (ownPr) {
+    items.push({
+      key: ownPr.id,
+      leading: <IconLead icon={ClipboardCheck} tone="amber" />,
+      title: ownPr.template_name ?? "Functioneringsgesprek",
+      meta: `Zelfevaluatie open · met ${ownPr.manager.name}`,
+      cta: "Invullen",
+      href: `/functioneringsgesprek/${ownPr.id}/voorbereiden`,
+    });
+  }
+
+  for (const req of data.feedbackRequests) {
+    items.push({
+      key: `feedback-${req.feedback_id}`,
+      leading: <AvatarLead id={req.requester.id} name={req.requester.name} avatarUrl={req.requester.avatar_url} badge={MessageCircle} badgeTone="primary" />,
+      title: <><span className="font-semibold">{req.requester.name}</span>{" · Peer feedback"}</>,
+      meta: `${req.template?.name ?? "Feedback"} · ${formatRelativeWeeks(req.requested_at ?? req.created_at)}`,
+      cta: "Invullen",
+      href: `/feedback-verzoek/${req.feedback_id}`,
+    });
+  }
+
+  return items;
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="border-t border-border bg-muted/30 px-6 py-2">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function PlateRow({ item }: { item: PlateItem }) {
+  return (
+    <li className="border-t border-border/60">
+      <Link
+        href={item.href}
+        className="group flex items-center gap-4 px-6 py-3.5 hover:bg-accent/40 transition-colors"
+      >
+        {item.leading}
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="truncate text-[13.5px] font-medium leading-tight">{item.title}</p>
+          <p className="truncate text-[12px] text-muted-foreground">{item.meta}</p>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground/50 group-hover:text-primary transition-colors whitespace-nowrap">
+          {item.cta}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </Link>
+    </li>
+  );
 }
 
 export function LayoutC({ data }: { data: DashboardData }) {
-  const { persona, dossier, feedbackRequests } = data;
+  const { persona, dossier } = data;
   const firstName = persona.name.split(" ")[0];
   const isManager = persona.role === "manager";
-  const agenda = buildAgenda(data);
+  const gesprekken = buildGesprekken(data);
+  const taken = buildTaken(data);
   const openItems = dossier.open.slice(0, 8);
+  const hasAnything = gesprekken.length > 0 || taken.length > 0;
 
   const quickLinks = isManager
     ? [
@@ -116,79 +246,41 @@ export function LayoutC({ data }: { data: DashboardData }) {
         </p>
       </header>
 
-      {/* Main row: agenda + actiepunten */}
+      {/* Main row: op je bord + actiepunten */}
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
 
-        {/* Agenda */}
+        {/* Op je bord */}
         <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4">
+          <div className="px-6 py-4">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Agenda
+              Op je bord
             </h2>
-            <Link
-              href="/een-op-een"
-              className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Alle gesprekken
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
 
-          {agenda.length === 0 ? (
+          {!hasAnything ? (
             <p className="px-6 pb-6 text-[13px] text-muted-foreground">
-              Geen gesprekken gepland.
+              Niks open. Geniet ervan.
             </p>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-y border-border">
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                    Persoon
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                    Datum / Status
-                  </th>
-                  <th className="hidden md:table-cell px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                    Type
-                  </th>
-                  <th className="px-6 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {agenda.map((row) => (
-                  <tr
-                    key={row.key}
-                    className="group border-b border-border/60 last:border-b-0 transition-colors hover:bg-accent/40"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <PersonAvatar
-                          id={row.personId}
-                          name={row.personName}
-                          avatarUrl={row.avatarUrl}
-                        />
-                        <span className="text-[14px] font-semibold">{row.personName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-[13px] text-muted-foreground whitespace-nowrap">
-                      {row.date}
-                    </td>
-                    <td className="hidden md:table-cell px-4 py-4">
-                      <TypeBadge type={row.type} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link
-                        href={row.href}
-                        className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground/50 transition-colors group-hover:text-primary"
-                      >
-                        Open
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {gesprekken.length > 0 && (
+                <div>
+                  <SectionHeader label="Aankomende gesprekken" />
+                  <ul>
+                    {gesprekken.map((item) => <PlateRow key={item.key} item={item} />)}
+                  </ul>
+                </div>
+              )}
+
+              {taken.length > 0 && (
+                <div>
+                  <SectionHeader label="Open taken" />
+                  <ul>
+                    {taken.map((item) => <PlateRow key={item.key} item={item} />)}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -207,85 +299,35 @@ export function LayoutC({ data }: { data: DashboardData }) {
             </Link>
           </div>
 
-          {openItems.length === 0 && feedbackRequests.length === 0 ? (
+          {openItems.length === 0 ? (
             <p className="px-5 pb-6 text-[13px] text-muted-foreground">
               Niks open. Lekker rustig.
             </p>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-y border-border">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                    Omschrijving
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-                    Sinds
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {feedbackRequests.map((req, i) => (
-                  <tr
-                    key={req.feedback_id}
-                    className={cn(
-                      "group border-b border-border/40 last:border-b-0 transition-colors hover:bg-accent/40",
-                      i % 2 === 1 && "bg-muted/30",
-                    )}
+            <ul>
+              {openItems.map((item) => (
+                <li key={item.id} className="border-t border-border">
+                  <Link
+                    href="/actiepunten"
+                    className="group flex items-center gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
                   >
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", TONE_BG["primary"])}>
-                          <MessageCircle className="h-3 w-3" strokeWidth={1.75} />
-                        </span>
-                        <Link
-                          href={`/feedback-verzoek/${req.feedback_id}`}
-                          className="truncate text-[12.5px] font-medium leading-snug hover:text-primary max-w-[180px]"
-                        >
-                          Feedback voor {req.requester.name}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[11.5px] text-muted-foreground whitespace-nowrap">
-                      {formatRelativeWeeks(req.requested_at ?? req.created_at)}
-                    </td>
-                  </tr>
-                ))}
-                {openItems.map((item, i) => {
-                  const offset = feedbackRequests.length;
-                  return (
-                    <tr
-                      key={item.id}
-                      className={cn(
-                        "group border-b border-border/40 last:border-b-0 transition-colors hover:bg-accent/40",
-                        (i + offset) % 2 === 1 && "bg-muted/30",
-                      )}
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", TONE_BG["emerald"])}>
-                            <CheckSquare className="h-3 w-3" strokeWidth={1.75} />
-                          </span>
-                          <Link
-                            href="/actiepunten"
-                            className="truncate text-[12.5px] font-medium leading-snug hover:text-primary max-w-[180px]"
-                          >
-                            {item.description}
-                          </Link>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[11.5px] text-muted-foreground whitespace-nowrap">
-                        {formatRelativeWeeks(item.created_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", TONE_BG["emerald"])}>
+                      <CheckSquare className="h-3 w-3" strokeWidth={1.75} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12.5px] font-medium leading-snug">{item.description}</p>
+                      <p className="text-[11px] text-muted-foreground">{formatRelativeWeeks(item.created_at)}</p>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
 
-      {/* Quick links */}
+      {/* Snelkoppelingen */}
       <section>
         <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Snelkoppelingen
@@ -320,20 +362,5 @@ export function LayoutC({ data }: { data: DashboardData }) {
         </div>
       </section>
     </div>
-  );
-}
-
-function TypeBadge({ type }: { type: "1-op-1" | "Functionering" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-        type === "1-op-1"
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-          : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-      )}
-    >
-      {type}
-    </span>
   );
 }

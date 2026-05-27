@@ -18,6 +18,7 @@ export type DashboardData = {
   teamMembers: TeamMember[];
   ownOpenPerformanceReview: PerformanceReviewListItem | null;
   managerOpenPerformanceReviews: PerformanceReviewListItem[];
+  scheduledPerformanceReviews: PerformanceReviewListItem[];
   subtitle: string;
 };
 

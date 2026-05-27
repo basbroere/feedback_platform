@@ -48,6 +48,7 @@ async function ensureManagerOf(
 export async function startPerformanceReview(input: {
   employeeId: string;
   templateId?: string | null;
+  scheduledAt?: string | null;
 }): Promise<{ id: string }> {
   const managerId = await requirePersonaId();
   const supabase = await createClient();
@@ -59,14 +60,18 @@ export async function startPerformanceReview(input: {
     templateId = template?.id ?? null;
   }
 
+  const scheduledAt = input.scheduledAt ?? null;
+  const now = new Date().toISOString();
+
   const { data, error } = await supabase
     .from("performance_reviews")
     .insert({
       manager_id: managerId,
       employee_id: input.employeeId,
       template_id: templateId,
-      status: "draft" as const,
-      cycle_started_at: new Date().toISOString(),
+      status: scheduledAt ? ("scheduled" as const) : ("draft" as const),
+      scheduled_at: scheduledAt,
+      cycle_started_at: now,
     })
     .select("id")
     .single();
@@ -99,20 +104,9 @@ export async function saveEmployeeSelfEvaluation(input: {
   if (row.completed_at)
     throw new Error("Dit functioneringsgesprek is al afgerond");
 
-  const hasAny = Object.values(input.answers).some(
-    (v) => typeof v === "string" && v.trim().length > 0,
-  );
-
-  const patch: Record<string, unknown> = {
-    employee_self_evaluation: input.answers,
-  };
-  if (hasAny && row.status === "draft") {
-    patch.status = "ready_for_meeting";
-  }
-
   const { error: updErr } = await supabase
     .from("performance_reviews")
-    .update(patch)
+    .update({ employee_self_evaluation: input.answers })
     .eq("id", input.performanceReviewId);
   if (updErr) throw new Error(updErr.message);
 
@@ -120,6 +114,54 @@ export async function saveEmployeeSelfEvaluation(input: {
   revalidatePath(
     `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
   );
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
+}
+
+// Medewerker rondt voorbereiding af: zelfreflectie ingevuld én peer gekozen.
+// Zet status van 'draft' naar 'collecting_input'.
+export async function finalizeEmployeePreparation(input: {
+  performanceReviewId: string;
+}): Promise<void> {
+  const employeeId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: row, error: rowErr } = await supabase
+    .from("performance_reviews")
+    .select("id, employee_id, status, employee_self_evaluation, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (rowErr || !row) throw new Error("Functioneringsgesprek niet gevonden");
+  if (row.employee_id !== employeeId) throw new Error("Niet jouw functioneringsgesprek");
+  if (row.completed_at) throw new Error("Dit functioneringsgesprek is al afgerond");
+  if (row.status === "ready_for_meeting" || row.status === "completed" || row.status === "cancelled") return;
+
+  const hasEval = Object.values(row.employee_self_evaluation ?? {}).some(
+    (v) => typeof v === "string" && (v as string).trim().length > 0,
+  );
+  if (!hasEval) throw new Error("Vul eerst je zelfreflectie in");
+
+  const { data: peerRow } = await supabase
+    .from("feedback")
+    .select("id")
+    .eq("source_type", "performance_review")
+    .eq("source_id", input.performanceReviewId)
+    .neq("author_id", row.employee_id)
+    .in("status", ["requested", "submitted"])
+    .limit(1)
+    .maybeSingle();
+  if (!peerRow) throw new Error("Kies eerst een peer-reviewer");
+
+  const nextStatus: "scheduled" | "collecting_input" =
+    row.status === "scheduled" ? "scheduled" : "collecting_input";
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update({ status: nextStatus })
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`);
   revalidatePath("/functioneringsgesprek");
   revalidatePath("/dashboard");
 }
@@ -408,6 +450,8 @@ export async function submitManagerCycleFeedback(input: {
         author_id: managerId,
       },
     });
+
+    await maybeAdvanceToReadyForMeeting(supabase, input.performanceReviewId, pr.manager_id as string, pr.employee_id as string);
   }
 
   revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
@@ -415,6 +459,88 @@ export async function submitManagerCycleFeedback(input: {
   revalidatePath("/feedback");
   revalidatePath("/dashboard");
   return { feedbackId };
+}
+
+// Interne helper: als alle drie inputs binnen zijn, zet status op 'ready_for_meeting'.
+async function maybeAdvanceToReadyForMeeting(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  prId: string,
+  managerId: string,
+  employeeId: string,
+): Promise<void> {
+  const { data: pr } = await supabase
+    .from("performance_reviews")
+    .select("status, employee_self_evaluation")
+    .eq("id", prId)
+    .maybeSingle();
+  if (!pr) return;
+  if (pr.status === "ready_for_meeting" || pr.status === "completed" || pr.status === "cancelled") return;
+
+  const hasEval = Object.values(pr.employee_self_evaluation ?? {}).some(
+    (v) => typeof v === "string" && (v as string).trim().length > 0,
+  );
+  if (!hasEval) return;
+
+  const { data: feedbackRows } = await supabase
+    .from("feedback")
+    .select("author_id, status")
+    .eq("source_type", "performance_review")
+    .eq("source_id", prId)
+    .eq("status", "submitted");
+
+  type FRow = { author_id: string; status: string };
+  const rows = (feedbackRows ?? []) as FRow[];
+  const managerSubmitted = rows.some((r) => r.author_id === managerId);
+  const peerSubmitted = rows.some(
+    (r) => r.author_id !== managerId && r.author_id !== employeeId,
+  );
+
+  if (managerSubmitted && peerSubmitted) {
+    await supabase
+      .from("performance_reviews")
+      .update({ status: "ready_for_meeting" as const })
+      .eq("id", prId);
+  }
+}
+
+// Manager plant een datum voor het gesprek. Vereist status 'ready_for_meeting'.
+export async function schedulePerformanceReviewMeeting(input: {
+  performanceReviewId: string;
+  scheduledAt: string;
+}): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, status")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId) throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.status !== "ready_for_meeting") throw new Error("Nog niet alle feedback binnen");
+
+  const date = new Date(input.scheduledAt);
+  if (isNaN(date.getTime())) throw new Error("Ongeldige datum");
+
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update({ status: "scheduled" as const, scheduled_at: date.toISOString() })
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
+
+  await supabase.from("notifications").insert({
+    user_id: pr.employee_id as string,
+    type: "feedback_submitted" as const,
+    payload: {
+      performance_review_id: input.performanceReviewId,
+      scheduled_at: date.toISOString(),
+    },
+  });
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
 }
 
 export async function createActionItemForPerformanceReview(input: {

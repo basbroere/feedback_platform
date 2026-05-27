@@ -13,6 +13,8 @@ import {
 import { getTemplateById } from "@/lib/one-on-ones/template";
 import { PerformanceReviewMeetingView } from "@/components/performance-review/meeting-view";
 import { PerformanceReviewEmployeeSummaryView } from "@/components/performance-review/employee-summary-view";
+import { ManagerPreparationView } from "@/components/performance-review/manager-preparation-view";
+import { PerformanceReviewScheduledView } from "@/components/performance-review/scheduled-view";
 
 export default async function PerformanceReviewDetail({
   params,
@@ -30,13 +32,73 @@ export default async function PerformanceReviewDetail({
     const questions =
       managerView.template?.questions ?? template?.questions ?? [];
 
-    const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
-      getActiveActionItemsForPerformanceReview(managerView.id),
-      getPerformanceReviewDossier(managerView.id),
-      getDossierFeedback(managerView.id),
-      getCycleInputs(managerView.id),
-    ]);
+    const status = managerView.status;
 
+    if (status === "completed") {
+      const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
+        getActiveActionItemsForPerformanceReview(managerView.id),
+        getPerformanceReviewDossier(managerView.id),
+        getDossierFeedback(managerView.id),
+        getCycleInputs(managerView.id),
+      ]);
+      return (
+        <div className="space-y-6">
+          <Link
+            href={`/team/${managerView.employee.id}`}
+            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Terug
+          </Link>
+          <PerformanceReviewMeetingView
+            review={managerView}
+            questions={questions}
+            cycleInputs={cycleInputs}
+            newActionItems={newItems}
+            dossierActionItems={dossier?.completedActionItems ?? []}
+            dossierFeedback={feedback}
+            windowStart={dossier?.windowStart ?? managerView.cycle_started_at}
+            windowEnd={dossier?.windowEnd ?? new Date().toISOString()}
+          />
+        </div>
+      );
+    }
+
+    // ready_for_meeting: alle feedback binnen, gesprek staat ingepland
+    if (status === "ready_for_meeting") {
+      const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
+        getActiveActionItemsForPerformanceReview(managerView.id),
+        getPerformanceReviewDossier(managerView.id),
+        getDossierFeedback(managerView.id),
+        getCycleInputs(managerView.id),
+      ]);
+      return (
+        <div className="space-y-6">
+          <Link
+            href={`/team/${managerView.employee.id}`}
+            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Terug
+          </Link>
+          <PerformanceReviewScheduledView
+            review={managerView}
+            questions={questions}
+            cycleInputs={cycleInputs}
+            newActionItems={newItems}
+            dossierActionItems={dossier?.completedActionItems ?? []}
+            dossierFeedback={feedback}
+            windowStart={dossier?.windowStart ?? managerView.cycle_started_at}
+            windowEnd={dossier?.windowEnd ?? new Date().toISOString()}
+          />
+        </div>
+      );
+    }
+
+    // draft | collecting_input | scheduled: voorbereiding/input-fase
+    const cycleInputs = await getCycleInputs(managerView.id, {
+      hideUntilManagerSubmits: true,
+    });
     return (
       <div className="space-y-6">
         <Link
@@ -46,15 +108,10 @@ export default async function PerformanceReviewDetail({
           <ChevronLeft className="h-3.5 w-3.5" />
           Terug
         </Link>
-        <PerformanceReviewMeetingView
+        <ManagerPreparationView
           review={managerView}
           questions={questions}
           cycleInputs={cycleInputs}
-          newActionItems={newItems}
-          dossierActionItems={dossier?.completedActionItems ?? []}
-          dossierFeedback={feedback}
-          windowStart={dossier?.windowStart ?? managerView.cycle_started_at}
-          windowEnd={dossier?.windowEnd ?? new Date().toISOString()}
         />
       </div>
     );
