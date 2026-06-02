@@ -26,6 +26,7 @@ import type { TemplateQuestion } from "@/lib/one-on-ones/types";
 import { cn } from "@/lib/utils";
 
 const TYPE_OPTIONS: TemplateType[] = [
+  "peer_feedback",
   "peer_360",
   "one_on_one",
   "evaluation",
@@ -86,7 +87,7 @@ export function TemplateEditorDialog(props: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TemplateType>(
-    props.mode === "edit" ? props.initialType : "peer_360",
+    props.mode === "edit" ? props.initialType : "peer_feedback",
   );
   const [name, setName] = useState(
     props.mode === "edit" ? props.initialName : "",
@@ -107,7 +108,7 @@ export function TemplateEditorDialog(props: Props) {
       setName(props.initialName);
       setQuestions(props.initialQuestions.map(withKey));
     } else {
-      setType("peer_360");
+      setType("peer_feedback");
       setName("");
       setQuestions([{ ...EMPTY_DRAFT, _key: "init" }]);
     }

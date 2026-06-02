@@ -2,14 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { PageTitle } from "@/components/ui/page-title";
+import { cn } from "@/lib/utils";
 import {
   listTeamsForAdmin,
   listUsersForAdmin,
@@ -19,10 +14,7 @@ export default async function BeheerPage() {
   const persona = await requirePersona();
   if (!persona.is_admin) redirect("/dashboard");
 
-  const [users, teams] = await Promise.all([
-    listUsersForAdmin(),
-    listTeamsForAdmin(),
-  ]);
+  await Promise.all([listUsersForAdmin(), listTeamsForAdmin()]);
 
   return (
     <div className="space-y-10">
@@ -33,22 +25,20 @@ export default async function BeheerPage() {
         subtitle="Teams en personen"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <BeheerCard
           href="/beheer/personen"
           icon={UserPlus}
           tone="primary"
           title="Personen"
-          description="Voeg medewerkers, team-leads, managers en HR toe. Pas rollen aan of verwijder accounts."
-          stat={`${users.length} ${users.length === 1 ? "persoon" : "personen"}`}
+          description="Aanmaken, bewerken en rollen instellen."
         />
         <BeheerCard
           href="/beheer/teams"
           icon={UsersRound}
           tone="emerald"
           title="Teams"
-          description="Maak teams aan en koppel een team-lead. Teamleden voeg je toe via personen."
-          stat={`${teams.length} ${teams.length === 1 ? "team" : "teams"}`}
+          description="Teams aanmaken en een team-lead koppelen."
         />
       </div>
     </div>
@@ -57,10 +47,15 @@ export default async function BeheerPage() {
 
 type Tone = "primary" | "emerald";
 
-const TONE: Record<Tone, string> = {
-  primary: "bg-primary/10 text-primary",
-  emerald:
-    "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
+const TONE: Record<Tone, { icon: string; button: string }> = {
+  primary: {
+    icon: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+    button: "bg-blue-600 hover:bg-blue-700 text-white",
+  },
+  emerald: {
+    icon: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
+    button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  },
 };
 
 function BeheerCard({
@@ -69,45 +64,41 @@ function BeheerCard({
   tone,
   title,
   description,
-  stat,
 }: {
   href: string;
   icon: typeof UsersRound;
   tone: Tone;
   title: string;
   description: string;
-  stat: string;
 }) {
   return (
-    <Link href={href} className="group block">
-      <Card className="h-full transition-shadow hover:shadow-md">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-3">
-            <span
-              className={
-                "flex h-9 w-9 items-center justify-center rounded-lg " +
-                TONE[tone]
-              }
-            >
-              <Icon className="h-5 w-5" strokeWidth={1.75} />
-            </span>
-            <span className="text-[12px] font-medium text-muted-foreground">
-              {stat}
-            </span>
-          </div>
-          <CardTitle className="pt-3 text-[18px]">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <span className="inline-flex items-center gap-1 text-[13px] font-medium text-primary group-hover:underline">
-            Openen
-            <ArrowRight
-              className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-              strokeWidth={2}
-            />
-          </span>
-        </CardContent>
-      </Card>
-    </Link>
+    <Card className="flex flex-col gap-6 p-6">
+      <span
+        className={cn(
+          "flex h-14 w-14 items-center justify-center rounded-2xl",
+          TONE[tone].icon,
+        )}
+      >
+        <Icon className="h-7 w-7" strokeWidth={1.75} />
+      </span>
+
+      <div className="space-y-1.5">
+        <h3 className="text-[18px] font-bold leading-snug text-foreground">{title}</h3>
+        <p className="text-[14px] leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+
+      <div>
+        <Link
+          href={href}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-semibold transition-colors",
+            TONE[tone].button,
+          )}
+        >
+          Beheren
+          <ArrowRight className="h-4 w-4" strokeWidth={2} />
+        </Link>
+      </div>
+    </Card>
   );
 }

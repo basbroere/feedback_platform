@@ -2,7 +2,6 @@ import type { UserRole } from "@/lib/persona/types";
 
 export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "employee", label: "Medewerker" },
-  { value: "team_lead", label: "Team-lead" },
   { value: "manager", label: "Manager" },
 ];
 
