@@ -57,7 +57,7 @@ export function FeedbackView({ items }: { items: FeedbackWithSource[] }) {
             <p className="text-sm text-muted-foreground">
               {query.trim()
                 ? "Niks gevonden. Probeer een ander woord."
-                : "Nog geen feedback ontvangen. Peer-feedback komt binnen via je functioneringsgesprek; je manager kan ook feedback geven na een 1-op-1."}
+                : "Nog geen feedback ontvangen. Vraag feedback aan via de knop rechts boven, of wacht op feedback na een 1-op-1 of functioneringsgesprek."}
             </p>
           </div>
         ) : (

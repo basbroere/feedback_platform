@@ -5,23 +5,26 @@ import { useMemo, useState, useTransition } from "react";
 import {
   ArrowUpDown,
   Calendar,
+  CalendarCheck2,
   Check,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   MessageSquareText,
+  RotateCcw,
   Search,
   Sparkles,
   StickyNote,
+  Target,
 } from "lucide-react";
 import { updateActionItemStatus } from "@/lib/action-items/actions";
 import type { DossierItem } from "@/lib/action-items/queries";
 import { Input } from "@/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatDate, formatRelativeWeeks } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -176,14 +179,14 @@ export function ActionItemsView({
         )}
       </div>
 
-      {/* Detail sheet */}
-      <Sheet open={!!selected} onOpenChange={(o: boolean) => { if (!o) setSelected(null); }}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      {/* Detail modal */}
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl">
           {selected && (
-            <DetailSheet item={selected} onClose={() => setSelected(null)} />
+            <DetailModal item={selected} onClose={() => setSelected(null)} />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -353,7 +356,7 @@ function SourceCell({ item }: { item: DossierItem }) {
   return inner;
 }
 
-function DetailSheet({ item, onClose }: { item: DossierItem; onClose: () => void }) {
+function DetailModal({ item, onClose }: { item: DossierItem; onClose: () => void }) {
   const [status, setStatus] = useState(item.status);
   const [isPending, startTransition] = useTransition();
   const completed = status === "completed";
@@ -372,99 +375,138 @@ function DetailSheet({ item, onClose }: { item: DossierItem; onClose: () => void
     });
   }
 
+  const accentClass = completed
+    ? "bg-emerald-500"
+    : expired
+    ? "bg-amber-400"
+    : "bg-blue-500";
+
+  const timeLabel = completed
+    ? `Afgerond ${formatRelativeWeeks(item.completed_at)}`
+    : expired
+    ? "Vervallen"
+    : `Open sinds ${formatRelativeWeeks(item.created_at)}`;
+
+  const SourceIcon = item.source?.kind === "one_on_one" ? MessageSquareText : Sparkles;
+
   return (
-    <div className="flex flex-col gap-6 pt-2">
-      <SheetHeader>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {completed
-            ? `Afgerond ${formatRelativeWeeks(item.completed_at)}`
-            : expired
-            ? "Vervallen"
-            : `Open sinds ${formatRelativeWeeks(item.created_at)}`}
-        </p>
-        <SheetTitle className="text-left text-[17px] leading-snug">
+    <div className="flex flex-col overflow-hidden">
+      {/* Status accent strip */}
+      <div className={cn("h-1 w-full shrink-0", accentClass)} />
+
+      {/* Header */}
+      <div className="px-6 pt-5 pb-4">
+        <div className="mb-2 flex items-center gap-2">
+          <StatusBadge status={status} />
+          <span className="text-[11px] text-muted-foreground">{timeLabel}</span>
+        </div>
+        <DialogTitle className="text-[17px] font-semibold leading-snug text-foreground">
           {item.description}
-        </SheetTitle>
-      </SheetHeader>
+        </DialogTitle>
+      </div>
 
-      <dl className="grid grid-cols-[110px_1fr] items-start gap-x-4 gap-y-3 text-[13px]">
-        <dt className="text-muted-foreground">Status</dt>
-        <dd><StatusBadge status={status} /></dd>
+      <div className="mx-6 h-px bg-border/60" />
 
-        {item.source && (
-          <>
-            <dt className="text-muted-foreground">Bron</dt>
-            <dd>
-              {item.source.href ? (
-                <Link
-                  href={item.source.href}
-                  className="inline-flex items-center gap-1.5 text-primary hover:underline text-[13px]"
-                >
-                  {item.source.kind === "one_on_one" ? (
-                    <MessageSquareText className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  )}
-                  {item.source.kind === "one_on_one" ? "1-op-1" : item.source.label}
-                  {item.source.with ? ` met ${item.source.with.name}` : ""}
-                  {item.source.date ? ` · ${formatDate(item.source.date)}` : ""}
-                </Link>
-              ) : (
-                <span className="text-foreground/80">{item.source.label}</span>
-              )}
-            </dd>
-          </>
-        )}
-
-        <dt className="text-muted-foreground">Aangemaakt</dt>
-        <dd className="text-foreground/85">{formatDate(item.created_at)}</dd>
-
-        {item.target_date && (
-          <>
-            <dt className="text-muted-foreground">Streefdatum</dt>
-            <dd className="inline-flex items-center gap-1.5 text-foreground/85">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-              {formatDate(item.target_date)}
-            </dd>
-          </>
-        )}
-
-        {item.completed_at && (
-          <>
-            <dt className="text-muted-foreground">Afgerond op</dt>
-            <dd className="text-foreground/85">{formatDate(item.completed_at)}</dd>
-          </>
-        )}
-      </dl>
-
+      {/* Omschrijving */}
       {item.notes && (
-        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
-          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mx-6 mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3.5 dark:border-amber-900/30 dark:bg-amber-950/20">
+          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-700/70 dark:text-amber-400/70">
             <StickyNote className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Notities
+            Omschrijving
           </div>
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/85">
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/80">
             {item.notes}
           </p>
         </div>
       )}
 
-      {!expired && (
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={isPending}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors disabled:opacity-60",
-            completed
-              ? "bg-muted text-foreground hover:bg-muted/80"
-              : "bg-emerald-500 text-white hover:bg-emerald-600",
-          )}
-        >
-          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-          {completed ? "Toch openstaand" : "Markeer als afgerond"}
-        </button>
-      )}
+      {/* Info tiles */}
+      <div className="px-6 py-4 grid grid-cols-2 gap-2">
+        <InfoTile icon={<Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />} label="Aangemaakt">
+          {formatDate(item.created_at)}
+        </InfoTile>
+
+        {item.source ? (
+          <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <SourceIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Bron
+            </div>
+            {item.source.href ? (
+              <Link
+                href={item.source.href}
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+              >
+                <span className="truncate">
+                  {item.source.kind === "one_on_one" ? "1-op-1" : item.source.label}
+                  {item.source.with ? ` met ${item.source.with.name}` : ""}
+                  {item.source.date ? ` · ${formatDate(item.source.date)}` : ""}
+                </span>
+                <ExternalLink className="h-3 w-3 shrink-0 opacity-60" strokeWidth={1.75} />
+              </Link>
+            ) : (
+              <span className="text-[13px] font-medium text-foreground/80">{item.source.label}</span>
+            )}
+          </div>
+        ) : item.target_date ? (
+          <InfoTile icon={<Target className="h-3.5 w-3.5" strokeWidth={1.75} />} label="Streefdatum">
+            {formatDate(item.target_date)}
+          </InfoTile>
+        ) : item.completed_at ? (
+          <InfoTile icon={<CalendarCheck2 className="h-3.5 w-3.5" strokeWidth={1.75} />} label="Afgerond op">
+            {formatDate(item.completed_at)}
+          </InfoTile>
+        ) : null}
+      </div>
+
+      {/* Action footer */}
+      <div className="px-6 pb-5 pt-4">
+        {expired ? (
+          <p className="py-1 text-center text-[12px] italic text-muted-foreground">
+            Dit actiepunt is vervallen en kan niet meer worden bijgewerkt.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={toggle}
+            disabled={isPending}
+            className={cn(
+              "inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold shadow-sm transition-all disabled:opacity-60",
+              completed
+                ? "bg-muted text-foreground hover:bg-muted/70"
+                : "bg-emerald-500 text-white shadow-emerald-200 hover:bg-emerald-600 dark:shadow-emerald-900/40",
+            )}
+          >
+            {completed ? (
+              <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.5} />
+            ) : (
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            )}
+            {completed ? "Toch openstaand" : "Markeer als afgerond"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InfoTile({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <div className="text-[13px] font-medium text-foreground/85">{children}</div>
     </div>
   );
 }

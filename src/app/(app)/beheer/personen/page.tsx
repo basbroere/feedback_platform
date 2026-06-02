@@ -1,20 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, UserPlus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   listTeamsForAdmin,
   listUsersForAdmin,
 } from "@/lib/hr/admin-queries";
-import { CreateUserForm } from "@/components/hr/create-user-form";
+import { AddPersonSheet } from "@/components/hr/create-user-form";
 import { PersonTable } from "@/components/hr/person-table";
 
 export default async function PersonenBeheerPage() {
@@ -30,50 +24,36 @@ export default async function PersonenBeheerPage() {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <Link
-          href="/beheer"
-          className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
-          Terug naar beheer
-        </Link>
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
-          Personen
-        </h1>
-        <p className="text-[14px] text-muted-foreground">
-          Voeg gebruikers toe, pas rollen of teams aan en verwijder accounts.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <Link
+            href="/beheer"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
+            Terug naar beheer
+          </Link>
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
+            Personen
+          </h1>
+          <p className="text-[14px] text-muted-foreground">
+            Voeg gebruikers toe, pas rollen of teams aan en verwijder accounts.
+          </p>
+        </div>
+
+        <div className="shrink-0 pt-6">
+          <AddPersonSheet teams={teamOptions} />
+        </div>
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus
-              className="h-4 w-4 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            Nieuwe persoon
-          </CardTitle>
-          <CardDescription>
-            Kies een rol en koppel optioneel een team.
-          </CardDescription>
+        <CardHeader className="flex-row items-center gap-2 pb-0">
+          <span className="text-[15px] font-semibold">Alle personen</span>
+          <Badge variant="outline" className="ml-1">
+            {users.length}
+          </Badge>
         </CardHeader>
-        <CardContent>
-          <CreateUserForm teams={teamOptions} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Alle personen
-            <Badge variant="outline" className="ml-1">
-              {users.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <PersonTable
             users={users}
             teams={teamOptions}

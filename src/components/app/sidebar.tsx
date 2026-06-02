@@ -3,21 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTransition } from "react";
 import {
   CheckSquare,
   ClipboardCheck,
   LayoutGrid,
-  LogOut,
   MessageCircle,
   MessageSquareText,
-  Settings,
   ShieldCheck,
   Sliders,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { clearPersona } from "@/lib/persona/actions";
 import type { Persona } from "@/lib/persona/types";
 import type { TeamWithMembers } from "@/lib/persona/server";
 import { PersonaSwitcher } from "./persona-switcher";
@@ -73,7 +69,6 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const sections = navSections(persona);
-  const [isPending, startTransition] = useTransition();
 
   return (
     <aside className="sticky top-0 hidden h-svh w-[244px] shrink-0 flex-col bg-sidebar shadow-[1px_0_12px_0_rgba(0,0,0,0.06)] md:flex">
@@ -133,37 +128,8 @@ export function AppSidebar({
         ))}
       </div>
 
-      <div className="space-y-3 border-t border-sidebar-border/40 px-4 py-4">
+      <div className="border-t border-sidebar-border/40 px-4 py-4">
         <PersonaSwitcher current={persona} teams={teams} />
-        <ul className="space-y-0.5">
-          <li>
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] font-medium text-foreground/40"
-              title="Volgt later"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground/40">
-                <Settings className="h-4 w-4" strokeWidth={1.75} />
-              </span>
-              <span>Instellingen</span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => startTransition(() => clearPersona())}
-              disabled={isPending}
-              className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] font-medium text-destructive transition-colors hover:bg-destructive/8 disabled:opacity-60"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-destructive">
-                <LogOut className="h-4 w-4" strokeWidth={1.75} />
-              </span>
-              <span>Verlaat persona</span>
-            </button>
-          </li>
-        </ul>
       </div>
     </aside>
   );

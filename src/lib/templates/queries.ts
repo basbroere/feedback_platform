@@ -63,6 +63,20 @@ export async function listAllTemplates(): Promise<ManagedTemplate[]> {
   }));
 }
 
+export async function listActivePeerFeedbackTemplates(): Promise<
+  Pick<ManagedTemplate, "id" | "name">[]
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id, name")
+    .eq("type", "peer_feedback")
+    .eq("is_active", true)
+    .order("name");
+  if (error || !data) return [];
+  return data as { id: string; name: string }[];
+}
+
 export async function getManagedTemplate(
   id: string,
 ): Promise<ManagedTemplate | null> {

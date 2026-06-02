@@ -6,10 +6,12 @@ export function FeedbackHeader({
   totalReceived,
   crossTeamCount,
   latestDate,
+  action,
 }: {
   totalReceived: number;
   crossTeamCount: number;
   latestDate: string | null;
+  action?: React.ReactNode;
 }) {
   const metrics: MetricCard[] = [
     {
@@ -34,7 +36,7 @@ export function FeedbackHeader({
 
   return (
     <div className="space-y-5">
-      <PageTitle icon={MessageCircle} tone="primary" title="Feedback" />
+      <PageTitle icon={MessageCircle} tone="primary" title="Feedback" action={action} />
       <MetricCards metrics={metrics} />
     </div>
   );
