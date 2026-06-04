@@ -90,6 +90,97 @@ export async function createActionItemForOneOnOne(input: {
   return { id: data.id };
 }
 
+export async function updateActionItemDetails(input: {
+  id: string;
+  description: string;
+  notes?: string | null;
+}) {
+  const personaId = await getCurrentPersonaId();
+  if (!personaId) throw new Error("Geen persona geselecteerd");
+
+  const description = input.description.trim();
+  if (!description) throw new Error("Titel is leeg");
+  const notes =
+    input.notes === undefined
+      ? undefined
+      : input.notes && input.notes.trim()
+        ? input.notes.trim()
+        : null;
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("action_items")
+    .select("id, owner_id, source_id, source_type")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (error || !row) throw new Error("Actiepunt niet gevonden");
+
+  let allowed = row.owner_id === personaId;
+  if (!allowed && row.source_type === "one_on_one") {
+    const { data: one } = await supabase
+      .from("one_on_ones")
+      .select("manager_id")
+      .eq("id", row.source_id)
+      .maybeSingle();
+    allowed = one?.manager_id === personaId;
+  }
+  if (!allowed) throw new Error("Niet toegestaan");
+
+  const patch: Record<string, unknown> = { description };
+  if (notes !== undefined) patch.notes = notes;
+
+  const { error: updErr } = await supabase
+    .from("action_items")
+    .update(patch)
+    .eq("id", input.id);
+  if (updErr) throw new Error(updErr.message);
+
+  if (row.source_type === "one_on_one") {
+    revalidatePath(`/een-op-een/${row.source_id}`);
+  }
+  revalidatePath("/een-op-een");
+  revalidatePath("/dashboard");
+  revalidatePath("/actiepunten");
+}
+
+export async function deleteActionItem(id: string) {
+  const personaId = await getCurrentPersonaId();
+  if (!personaId) throw new Error("Geen persona geselecteerd");
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("action_items")
+    .select("id, owner_id, source_id, source_type")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !row) throw new Error("Actiepunt niet gevonden");
+
+  // Verwijderen mag alleen de manager van het bron-1-op-1 (of bron-cyclus).
+  let allowed = false;
+  if (row.source_type === "one_on_one") {
+    const { data: one } = await supabase
+      .from("one_on_ones")
+      .select("manager_id")
+      .eq("id", row.source_id)
+      .maybeSingle();
+    allowed = one?.manager_id === personaId;
+  }
+  if (!allowed) throw new Error("Niet toegestaan");
+
+  const { error: delErr } = await supabase
+    .from("action_items")
+    .delete()
+    .eq("id", id);
+  if (delErr) throw new Error(delErr.message);
+
+  if (row.source_type === "one_on_one") {
+    revalidatePath(`/een-op-een/${row.source_id}`);
+  }
+  revalidatePath("/een-op-een");
+  revalidatePath("/dashboard");
+  revalidatePath("/actiepunten");
+}
+
 export async function updateActionItemOwner(input: {
   id: string;
   ownerId: string;
