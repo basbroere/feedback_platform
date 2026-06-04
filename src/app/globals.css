@@ -158,3 +158,97 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+@layer components {
+  .article-prose {
+    @apply text-foreground leading-relaxed;
+  }
+  .article-prose h1 {
+    @apply mt-8 mb-3 text-[24px] font-bold leading-tight tracking-tight;
+  }
+  .article-prose h2 {
+    @apply mt-7 mb-2.5 text-[20px] font-semibold leading-snug;
+  }
+  .article-prose h3 {
+    @apply mt-6 mb-2 text-[17px] font-semibold leading-snug;
+  }
+  .article-prose p {
+    @apply my-4 text-[15px] leading-7 text-foreground/90;
+  }
+  .article-prose strong {
+    @apply font-semibold text-foreground;
+  }
+  .article-prose em {
+    @apply italic;
+  }
+  .article-prose u {
+    @apply underline underline-offset-2;
+  }
+  .article-prose s {
+    @apply line-through;
+  }
+  .article-prose ul {
+    @apply my-4 list-disc pl-6 text-[15px] leading-7 text-foreground/90;
+  }
+  .article-prose ol {
+    @apply my-4 list-decimal pl-6 text-[15px] leading-7 text-foreground/90;
+  }
+  .article-prose li {
+    @apply my-1;
+  }
+  .article-prose li > p {
+    @apply my-1;
+  }
+  .article-prose blockquote {
+    @apply my-4 border-l-4 border-border pl-4 italic text-muted-foreground;
+  }
+  .article-prose code {
+    @apply rounded bg-muted px-1.5 py-0.5 text-[13px] font-mono;
+  }
+  .article-prose pre {
+    @apply my-4 overflow-x-auto rounded-lg bg-muted p-4 text-[13px] font-mono;
+  }
+  .article-prose a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .article-prose > :first-child {
+    @apply mt-0;
+  }
+
+  .editor-prose {
+    @apply text-foreground leading-relaxed min-h-[280px] px-4 py-3;
+  }
+  .editor-prose:focus {
+    @apply outline-none;
+  }
+  .editor-prose h1 {
+    @apply mt-4 mb-2 text-[22px] font-bold leading-tight;
+  }
+  .editor-prose h2 {
+    @apply mt-3.5 mb-2 text-[18px] font-semibold;
+  }
+  .editor-prose h3 {
+    @apply mt-3 mb-1.5 text-[16px] font-semibold;
+  }
+  .editor-prose p {
+    @apply my-2 text-[15px] leading-7;
+  }
+  .editor-prose strong {
+    @apply font-semibold;
+  }
+  .editor-prose em {
+    @apply italic;
+  }
+  .editor-prose u {
+    @apply underline underline-offset-2;
+  }
+  .editor-prose ul {
+    @apply my-2 list-disc pl-6;
+  }
+  .editor-prose ol {
+    @apply my-2 list-decimal pl-6;
+  }
+  .editor-prose blockquote {
+    @apply my-2 border-l-4 border-border pl-3 italic text-muted-foreground;
+  }
+}

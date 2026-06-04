@@ -37,7 +37,7 @@ const TYPE_COLOR: Record<TemplateType, string> = {
 
 const KIND_LABEL: Record<string, string> = {
   open: "Open",
-  rating_b_1_5: "Bambelo-schaal",
+  rating_b_1_5: "Bamback-schaal",
   choice_single: "Keuze",
   choice_multi: "Meerkeuze",
 };

@@ -10,7 +10,7 @@ const ROLES: UserRole[] = ["employee", "team_lead", "manager"];
 async function requireAdmin(): Promise<string> {
   const persona = await getCurrentPersona();
   if (!persona) throw new Error("Geen persona geselecteerd");
-  if (!persona.is_admin) throw new Error("Alleen beheerders kunnen deze actie uitvoeren");
+  if (!persona.is_admin) throw new Error("Alleen HR kan deze actie uitvoeren");
   return persona.id;
 }
 
@@ -115,14 +115,14 @@ export async function updateUser(input: {
     .maybeSingle();
   if (!current) throw new Error("Gebruiker niet gevonden");
 
-  // Voorkom dat de laatste beheerder zichzelf de beheerderstatus ontneemt
+  // Voorkom dat de laatste HR-gebruiker zichzelf de HR-status ontneemt
   if ((current as unknown as { is_admin: boolean }).is_admin && !input.is_admin) {
     const { count } = await supabase
       .from("users")
       .select("id", { count: "exact", head: true })
       .eq("is_admin", true);
     if ((count ?? 0) <= 1) {
-      throw new Error("Er moet altijd minimaal één beheerder zijn");
+      throw new Error("Er moet altijd minimaal één HR-gebruiker zijn");
     }
   }
 
@@ -183,7 +183,7 @@ export async function deleteUser(input: { id: string }): Promise<void> {
       .select("id", { count: "exact", head: true })
       .eq("is_admin", true);
     if ((count ?? 0) <= 1) {
-      throw new Error("Laatste beheerder kan niet verwijderd worden");
+      throw new Error("Laatste HR-gebruiker kan niet verwijderd worden");
     }
   }
 

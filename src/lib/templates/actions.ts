@@ -17,7 +17,7 @@ const ALLOWED_KINDS: TemplateQuestion["kind"][] = [
 async function requireAdmin() {
   const persona = await getCurrentPersona();
   if (!persona) throw new Error("Geen persona geselecteerd");
-  if (!persona.is_admin) throw new Error("Alleen beheerders mogen templates beheren");
+  if (!persona.is_admin) throw new Error("Alleen HR mag templates beheren");
   return persona;
 }
 

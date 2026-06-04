@@ -23,6 +23,7 @@ export const getCurrentPersona = cache(async (): Promise<Persona | null> => {
     .from("users")
     .select("id, name, email, role, is_admin, team_id, avatar_url, team:teams!users_team_id_fkey(id, name)")
     .eq("id", personaId)
+    .is("left_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -54,6 +55,7 @@ export const listTeamsWithMembers = cache(
       supabase
         .from("users")
         .select("id, name, email, role, team_id, avatar_url")
+        .is("left_at", null)
         .order("role")
         .order("name"),
     ]);

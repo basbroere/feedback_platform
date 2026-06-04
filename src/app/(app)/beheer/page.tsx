@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, UserMinus, UserPlus, UsersRound } from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
 import { Card } from "@/components/ui/card";
 import { PageTitle } from "@/components/ui/page-title";
@@ -25,7 +25,7 @@ export default async function BeheerPage() {
         subtitle="Teams en personen"
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <BeheerCard
           href="/beheer/personen"
           icon={UserPlus}
@@ -40,12 +40,19 @@ export default async function BeheerPage() {
           title="Teams"
           description="Teams aanmaken en een team-lead koppelen."
         />
+        <BeheerCard
+          href="/beheer/uitdienst"
+          icon={UserMinus}
+          tone="slate"
+          title="Uit dienst"
+          description="Dossiers van medewerkers die uit dienst zijn."
+        />
       </div>
     </div>
   );
 }
 
-type Tone = "primary" | "emerald";
+type Tone = "primary" | "emerald" | "slate";
 
 const TONE: Record<Tone, { icon: string; button: string }> = {
   primary: {
@@ -55,6 +62,10 @@ const TONE: Record<Tone, { icon: string; button: string }> = {
   emerald: {
     icon: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
     button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  },
+  slate: {
+    icon: "bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300",
+    button: "bg-slate-600 hover:bg-slate-700 text-white",
   },
 };
 

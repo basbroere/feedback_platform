@@ -11,4 +11,4 @@ export type Persona = {
   team?: { id: string; name: string } | null;
 };
 
-export const PERSONA_COOKIE = "bambelo_persona";
+export const PERSONA_COOKIE = "bamback_persona";

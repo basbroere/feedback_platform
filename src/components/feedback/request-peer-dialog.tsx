@@ -97,7 +97,7 @@ export function RequestPeerDialog({
         <div className="space-y-5">
           {templates.length === 0 ? (
             <p className="rounded-xl bg-muted/60 px-4 py-3 text-[13px] text-muted-foreground">
-              Er zijn nog geen peer-feedback-templates aangemaakt. Vraag een beheerder om een template van het type "Losse peer feedback" toe te voegen via het Templates-overzicht.
+              Er zijn nog geen peer-feedback-templates aangemaakt. Vraag een HR-collega om een template van het type "Losse peer feedback" toe te voegen via het Templates-overzicht.
             </p>
           ) : (
             <>

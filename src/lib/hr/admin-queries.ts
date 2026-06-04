@@ -10,6 +10,7 @@ export async function listUsersForAdmin(): Promise<AdminUser[]> {
     .select(
       "id, name, email, role, is_admin, avatar_url, team_id, created_at, team:teams!users_team_id_fkey(id, name)",
     )
+    .is("left_at", null)
     .order("role")
     .order("name");
 
@@ -42,7 +43,7 @@ export async function listTeamsForAdmin(): Promise<AdminTeam[]> {
         "id, name, lead_user_id, created_at, lead:users!teams_lead_user_fk(id, name)",
       )
       .order("name"),
-    supabase.from("users").select("id, team_id"),
+    supabase.from("users").select("id, team_id").is("left_at", null),
   ]);
 
   if (teamsRes.error || !teamsRes.data) return [];

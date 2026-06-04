@@ -100,28 +100,72 @@ export default async function PerformanceReviewIndex() {
         </section>
       ) : null}
 
-      {persona.role === "manager" ? (
-        <section className="space-y-4">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Met jou als manager
-          </h2>
-          {asManager.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
-              <p className="text-sm text-muted-foreground">
-                Nog geen functioneringsgesprek-cyclus gestart. Open een
-                teamlid via /team en klik op &ldquo;Functioneringsgesprek
-                starten&rdquo;.
-              </p>
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {asManager.map((r) => (
-                <ManagerReviewCard key={r.id} review={r} />
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
+      {persona.role === "manager" ? <ManagerSections reviews={asManager} /> : null}
+    </div>
+  );
+}
+
+function ManagerSections({ reviews }: { reviews: PerformanceReviewListItem[] }) {
+  const open = reviews.filter(
+    (r) => r.status !== "completed" && r.status !== "cancelled",
+  );
+  const completed = reviews.filter((r) => r.status === "completed");
+
+  if (reviews.length === 0) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Met jou als manager
+        </h2>
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Nog geen functioneringsgesprek-cyclus gestart. Open een teamlid via
+            /team en klik op &ldquo;Functioneringsgesprek starten&rdquo;.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Opkomend
+        </h2>
+        {open.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Geen lopende functioneringsgesprekken.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {open.map((r) => (
+              <ManagerReviewCard key={r.id} review={r} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Afgerond
+        </h2>
+        {completed.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nog geen afgeronde functioneringsgesprekken.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {completed.map((r) => (
+              <ManagerReviewCard key={r.id} review={r} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

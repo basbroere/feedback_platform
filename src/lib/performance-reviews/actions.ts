@@ -271,6 +271,7 @@ export async function chooseCyclePeer(input: {
     .from("users")
     .select("id")
     .eq("id", input.peerId)
+    .is("left_at", null)
     .maybeSingle();
   if (peerErr || !peer) throw new Error("Collega niet gevonden");
 

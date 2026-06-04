@@ -6,7 +6,7 @@ Laatst bijgewerkt: 2026-05-22.
 
 ## In één regel
 
-Demo-platform voor Bambelo met persona-switcher, een werkende 1-op-1-module, peer-feedback-module en 360 functioneringsgesprek-module, een dashboard per rol, en losse pagina's voor actiepunten en feedback. Beoordelingsgesprek is nog niet gebouwd.
+Bamback is een demo-platform voor de organisatie Bambelo met persona-switcher, een werkende 1-op-1-module, peer-feedback-module en 360 functioneringsgesprek-module, een dashboard per rol, en losse pagina's voor actiepunten en feedback. Beoordelingsgesprek is nog niet gebouwd.
 
 ## Routes
 
@@ -71,7 +71,7 @@ Aanwezig in `20260513193859_initial_schema.sql` maar nog geen queries, actions o
 
 ## Demo-modus
 
-- **Geen auth.** Persona-picker op `/` zet een cookie `bambelo_persona` met de user-id.
+- **Geen auth.** Persona-picker op `/` zet een cookie `bamback_persona` met de user-id.
 - Persona-switcher onderaan de sidebar voor snel wisselen.
 - `npm run seed` populeert demo-data (5 teams in seed; `scripts/seed.ts`).
 - Geen ingebouwde "reset demo"-knop in de UI (CLAUDE.md noemt dit als wenselijk maar het is niet gebouwd).
