@@ -272,6 +272,7 @@ export async function getTeamMembers(
     .select("id, name, email, role, avatar_url")
     .eq("team_id", team.id)
     .neq("id", managerId)
+    .is("left_at", null)
     .order("name");
   if (memberErr || !members) return [];
 

@@ -43,7 +43,8 @@ export async function getHrSnapshot(): Promise<HrSnapshot> {
     supabase
       .from("users")
       .select("id", { count: "exact", head: true })
-      .neq("role", "hr"),
+      .neq("role", "hr")
+      .is("left_at", null),
   ]);
 
   const feedbackTotal = feedbackTotalRes.count ?? 0;
