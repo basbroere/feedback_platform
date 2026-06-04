@@ -240,3 +240,76 @@ export async function completeOneOnOne(oneOnOneId: string) {
   revalidatePath(`/team/${row.employee_id}`);
   revalidatePath("/team");
 }
+
+export async function rescheduleOneOnOne(input: {
+  oneOnOneId: string;
+  scheduledAt: string;
+}) {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: row, error: rowErr } = await supabase
+    .from("one_on_ones")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.oneOnOneId)
+    .maybeSingle();
+  if (rowErr || !row) throw new Error("1-op-1 niet gevonden");
+  if (row.manager_id !== managerId) throw new Error("Niet jouw 1-op-1");
+  if (row.completed_at) throw new Error("Een afgerond gesprek kun je niet verplaatsen");
+
+  const parsed = new Date(input.scheduledAt);
+  if (Number.isNaN(parsed.getTime())) throw new Error("Ongeldige datum");
+
+  const { error: updErr } = await supabase
+    .from("one_on_ones")
+    .update({ scheduled_at: parsed.toISOString() })
+    .eq("id", input.oneOnOneId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/een-op-een/${input.oneOnOneId}`);
+  revalidatePath(`/team/${row.employee_id}`);
+  revalidatePath("/team");
+  revalidatePath("/een-op-een");
+  revalidatePath("/dashboard");
+}
+
+export async function deleteOneOnOne(oneOnOneId: string) {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: row, error: rowErr } = await supabase
+    .from("one_on_ones")
+    .select("id, manager_id, employee_id")
+    .eq("id", oneOnOneId)
+    .maybeSingle();
+  if (rowErr || !row) throw new Error("1-op-1 niet gevonden");
+  if (row.manager_id !== managerId) throw new Error("Niet jouw 1-op-1");
+
+  // Actiepunten en feedback uit dit gesprek mee verwijderen, zodat er geen weesrijen blijven hangen.
+  const { error: aiErr } = await supabase
+    .from("action_items")
+    .delete()
+    .eq("source_type", "one_on_one")
+    .eq("source_id", oneOnOneId);
+  if (aiErr) throw new Error(aiErr.message);
+
+  const { error: fbErr } = await supabase
+    .from("feedback")
+    .delete()
+    .eq("source_type", "one_on_one")
+    .eq("source_id", oneOnOneId);
+  if (fbErr) throw new Error(fbErr.message);
+
+  const { error: delErr } = await supabase
+    .from("one_on_ones")
+    .delete()
+    .eq("id", oneOnOneId);
+  if (delErr) throw new Error(delErr.message);
+
+  revalidatePath(`/team/${row.employee_id}`);
+  revalidatePath("/team");
+  revalidatePath("/een-op-een");
+  revalidatePath("/dashboard");
+  revalidatePath("/actiepunten");
+  return { employeeId: row.employee_id };
+}
