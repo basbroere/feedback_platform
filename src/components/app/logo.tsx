@@ -20,14 +20,22 @@ export function Logo({
         priority
         className="shrink-0"
       />
-      <span
-        style={{ fontFamily: "var(--font-quicksand)" }}
-        className={cn(
-          "font-semibold lowercase leading-none text-primary",
-          wordmark,
-        )}
-      >
-        bamback
+      <span className="inline-flex items-baseline gap-1.5">
+        <span
+          style={{ fontFamily: "var(--font-quicksand)" }}
+          className={cn(
+            "font-semibold lowercase leading-none text-primary",
+            wordmark,
+          )}
+        >
+          bamback
+        </span>
+        <span
+          style={{ fontFamily: "var(--font-quicksand)" }}
+          className="text-[11px] font-semibold lowercase leading-none text-primary"
+        >
+          demo
+        </span>
       </span>
     </span>
   );
