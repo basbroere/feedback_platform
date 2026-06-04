@@ -9,7 +9,7 @@ export function Logo({
   className?: string;
 }) {
   const mark = size === "sm" ? 28 : 32;
-  const wordmark = size === "sm" ? "text-[18px]" : "text-[20px]";
+  const wordmark = size === "sm" ? "text-[22px]" : "text-[26px]";
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <Image
@@ -21,8 +21,9 @@ export function Logo({
         className="shrink-0"
       />
       <span
+        style={{ fontFamily: "var(--font-quicksand)" }}
         className={cn(
-          "font-extrabold lowercase tracking-tight text-primary",
+          "font-bold lowercase leading-none text-primary",
           wordmark,
         )}
       >
