@@ -94,7 +94,7 @@ export function PersonTable({
                     </Badge>
                     {u.is_admin ? (
                       <Badge variant="default" className="text-[10px]">
-                        Beheerder
+                        HR
                       </Badge>
                     ) : null}
                   </div>
@@ -268,7 +268,7 @@ function EditUserDialog({
               className="h-4 w-4 rounded border-input accent-primary"
             />
             <Label htmlFor="edit-admin" className="cursor-pointer font-normal">
-              Beheerder
+              HR
             </Label>
           </div>
 

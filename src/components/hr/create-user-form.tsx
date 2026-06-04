@@ -171,7 +171,7 @@ export function AddPersonSheet({
                   className="h-4 w-4 rounded border-input accent-primary"
                 />
                 <Label htmlFor="user-admin" className="cursor-pointer font-normal">
-                  Beheerder (templates en gebruikersbeheer)
+                  HR (templates, kennisbank en gebruikersbeheer)
                 </Label>
               </div>
             </section>

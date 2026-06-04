@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpen,
   CheckSquare,
   ClipboardCheck,
   LayoutGrid,
@@ -37,6 +38,7 @@ function navSections(persona: Persona): NavSection[] {
   const team: NavItem = { href: "/team", label: "Team", icon: UsersRound, tone: "violet" };
   const actiepunten: NavItem = { href: "/actiepunten", label: "Actiepunten", icon: CheckSquare, tone: "emerald" };
   const feedback: NavItem = { href: "/feedback", label: "Feedback", icon: MessageCircle, tone: "primary" };
+  const kennisbank: NavItem = { href: "/kennisbank", label: "Kennisbank", icon: BookOpen, tone: "sky" };
   const eenOpEen: NavItem = { href: "/een-op-een", label: "1-op-1", icon: MessageSquareText, tone: "blue" };
   const functioneringsgesprek: NavItem = { href: "/functioneringsgesprek", label: "Functionering", icon: ClipboardCheck, tone: "amber" };
   const templates: NavItem = { href: "/templates", label: "Templates", icon: Sliders, tone: "sky" };
@@ -45,11 +47,11 @@ function navSections(persona: Persona): NavSection[] {
   const sections: NavSection[] =
     persona.role === "manager"
       ? [
-          { title: "Menu", items: [home, actiepunten, feedback, team] },
+          { title: "Menu", items: [home, actiepunten, feedback, kennisbank, team] },
           { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
         ]
       : [
-          { title: "Menu", items: [home, actiepunten, feedback] },
+          { title: "Menu", items: [home, actiepunten, feedback, kennisbank] },
           { title: "Gesprekken", items: [eenOpEen, functioneringsgesprek] },
         ];
 
