@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Feedback platform, Bambelo",
+  title: "Bamback, feedback platform voor Bambelo",
   description: "Gespreks- en feedbackplatform voor Bambelo",
 };
 

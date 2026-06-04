@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getCurrentPersona,
@@ -6,6 +5,7 @@ import {
   listTeamsWithMembers,
 } from "@/lib/persona/server";
 import { PersonaPicker } from "@/components/persona/persona-picker";
+import { Logo } from "@/components/app/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -31,15 +31,7 @@ export default async function StartScreen({
     <main className="flex min-h-svh flex-col bg-background">
       <div className="mx-auto w-full max-w-5xl px-6 pt-8 pb-10">
         <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-          <Image
-            src="https://cdn.homerun.co/59203/logo-bambelo1630332176logo.png"
-            alt="Bambelo"
-            width={240}
-            height={240}
-            priority
-            unoptimized
-            className="h-7 w-auto object-contain"
-          />
+          <Logo size="sm" />
           <h1 className="text-[20px] font-semibold tracking-tight md:text-[22px]">
             Kies een persona
           </h1>

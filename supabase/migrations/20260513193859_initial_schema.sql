@@ -1,4 +1,4 @@
--- Initial schema voor het Bambelo feedback platform.
+-- Initial schema voor het Bamback feedback platform (gebouwd voor de organisatie Bambelo).
 -- Drie modules: 1-op-1, functioneringsgesprek (met 360), beoordelingsgesprek.
 
 -- Eenmalige opschoning van legacy testtabellen uit de exploratiefase.

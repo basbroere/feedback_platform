@@ -39,7 +39,7 @@ const KIND_OPTIONS: {
 }[] = [
   {
     value: "rating_b_1_5",
-    label: "Bambelo-schaal",
+    label: "Bamback-schaal",
     hint: "Score op 5 B's plus verklaring.",
   },
   { value: "open", label: "Open tekst", hint: "Vrije tekst." },

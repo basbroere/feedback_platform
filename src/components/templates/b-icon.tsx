@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// Bambelo-B als rating-pip. Gevuld of leeg afhankelijk van active.
+// Bamback-B als rating-pip. Gevuld of leeg afhankelijk van active.
 export function BIcon({
   active,
   className,

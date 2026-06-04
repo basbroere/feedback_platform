@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,6 +16,7 @@ import {
 import type { Persona } from "@/lib/persona/types";
 import type { TeamWithMembers } from "@/lib/persona/server";
 import { PersonaSwitcher } from "./persona-switcher";
+import { Logo } from "./logo";
 import { TONE_BG, type Tone } from "@/lib/ui/tone";
 import { cn } from "@/lib/utils";
 
@@ -73,16 +73,8 @@ export function AppSidebar({
   return (
     <aside className="sticky top-0 hidden h-svh w-[244px] shrink-0 flex-col bg-sidebar shadow-[1px_0_12px_0_rgba(0,0,0,0.06)] md:flex">
       <div className="px-5 pt-7 pb-8">
-        <Link href="/dashboard" className="inline-flex items-center" aria-label="Bambelo">
-          <Image
-            src="https://cdn.homerun.co/59203/logo-bambelo1630332176logo.png"
-            alt="Bambelo"
-            width={240}
-            height={240}
-            priority
-            unoptimized
-            className="h-8 w-auto object-contain"
-          />
+        <Link href="/dashboard" aria-label="Bamback">
+          <Logo />
         </Link>
       </div>
 
