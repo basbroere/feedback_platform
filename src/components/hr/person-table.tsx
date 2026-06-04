@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { OffboardUserDialog } from "@/components/hr/offboard-user-dialog";
 import { deleteUser, updateUser } from "@/lib/hr/admin-actions";
 import {
   ROLE_LABEL,
@@ -38,6 +39,7 @@ export function PersonTable({
 }) {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [offboardingId, setOffboardingId] = useState<string | null>(null);
 
   if (users.length === 0) {
     return (
@@ -117,6 +119,17 @@ export function PersonTable({
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => setOffboardingId(u.id)}
+                      disabled={u.id === currentUserId}
+                      aria-label={`Zet ${u.name} uit dienst`}
+                      title="Uit dienst zetten"
+                      className="text-amber-600 hover:text-amber-700"
+                    >
+                      <UserMinus className="h-4 w-4" strokeWidth={1.75} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setDeletingId(u.id)}
                       disabled={u.id === currentUserId}
                       aria-label={`Verwijder ${u.name}`}
@@ -145,6 +158,20 @@ export function PersonTable({
           user={users.find((u) => u.id === deletingId) ?? null}
           onClose={() => setDeletingId(null)}
         />
+      ) : null}
+
+      {offboardingId ? (
+        (() => {
+          const target = users.find((u) => u.id === offboardingId);
+          if (!target) return null;
+          return (
+            <OffboardUserDialog
+              userId={target.id}
+              userName={target.name}
+              onClose={() => setOffboardingId(null)}
+            />
+          );
+        })()
       ) : null}
     </>
   );
