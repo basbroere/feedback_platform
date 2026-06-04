@@ -23,7 +23,7 @@ export function Logo({
       <span
         style={{ fontFamily: "var(--font-quicksand)" }}
         className={cn(
-          "font-bold lowercase leading-none text-primary",
+          "font-semibold lowercase leading-none text-primary",
           wordmark,
         )}
       >
