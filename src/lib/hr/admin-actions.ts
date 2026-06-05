@@ -40,6 +40,39 @@ function assertValidRole(role: string): asserts role is UserRole {
   }
 }
 
+// Houdt `teams.lead_user_id` synchroon met de manager-rol van een gebruiker.
+// Manager + team => deze gebruiker wordt lead van dat team, en eventueel
+// lead-status in andere teams wordt opgeschoond. Geen manager of geen team =>
+// lead-status overal verwijderd.
+async function syncTeamLeadForUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  role: UserRole,
+  teamId: string | null,
+): Promise<void> {
+  if (role === "manager" && teamId) {
+    const { error: clearError } = await supabase
+      .from("teams")
+      .update({ lead_user_id: null })
+      .eq("lead_user_id", userId)
+      .neq("id", teamId);
+    if (clearError) throw new Error(clearError.message);
+
+    const { error: setError } = await supabase
+      .from("teams")
+      .update({ lead_user_id: userId })
+      .eq("id", teamId);
+    if (setError) throw new Error(setError.message);
+    return;
+  }
+
+  const { error } = await supabase
+    .from("teams")
+    .update({ lead_user_id: null })
+    .eq("lead_user_id", userId);
+  if (error) throw new Error(error.message);
+}
+
 export async function createUser(input: {
   name: string;
   email: string;
@@ -85,6 +118,8 @@ export async function createUser(input: {
     .select("id")
     .single();
   if (error || !data) throw new Error(error?.message ?? "Aanmaken mislukt");
+
+  await syncTeamLeadForUser(supabase, data.id, input.role, input.teamId);
 
   revalidateBeheer();
   return { id: data.id };
@@ -157,6 +192,8 @@ export async function updateUser(input: {
     })
     .eq("id", input.id);
   if (error) throw new Error(error.message);
+
+  await syncTeamLeadForUser(supabase, input.id, input.role, input.teamId);
 
   revalidateBeheer();
   void adminId;

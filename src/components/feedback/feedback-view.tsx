@@ -18,28 +18,99 @@ const SOURCE_BORDER: Record<FeedbackSource, string> = {
   peer_request: "border-l-4 border-l-violet-400 dark:border-l-violet-500",
 };
 
+type FilterKey = "all" | "one_on_one" | "performance_review" | "cross_team";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "Alle" },
+  { key: "one_on_one", label: "1-op-1" },
+  { key: "performance_review", label: "Functionering" },
+  { key: "cross_team", label: "Cross-team" },
+];
+
+function matchesFilter(item: FeedbackWithSource, filter: FilterKey): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "one_on_one":
+      return item.source_type === "one_on_one";
+    case "performance_review":
+      return item.source_type === "performance_review";
+    case "cross_team":
+      return item.is_cross_team;
+  }
+}
+
 export function FeedbackView({ items }: { items: FeedbackWithSource[] }) {
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+
+  const counts = useMemo(() => {
+    const c: Record<FilterKey, number> = {
+      all: items.length,
+      one_on_one: 0,
+      performance_review: 0,
+      cross_team: 0,
+    };
+    for (const f of items) {
+      if (f.source_type === "one_on_one") c.one_on_one += 1;
+      if (f.source_type === "performance_review") c.performance_review += 1;
+      if (f.is_cross_team) c.cross_team += 1;
+    }
+    return c;
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (f) =>
+    return items.filter((f) => {
+      if (!matchesFilter(f, filter)) return false;
+      if (!q) return true;
+      return (
         (f.body?.toLowerCase().includes(q) ?? false) ||
         (f.author?.name?.toLowerCase().includes(q) ?? false) ||
         (f.source?.label?.toLowerCase().includes(q) ?? false) ||
         Object.values(f.responses ?? {}).some((v) =>
           v.toLowerCase().includes(q),
-        ),
-    );
-  }, [items, query]);
+        )
+      );
+    });
+  }, [items, query, filter]);
 
   const [featured, ...rest] = filtered;
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            const count = counts[f.key];
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground/75 hover:bg-accent/50",
+                )}
+              >
+                {f.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums",
+                    active
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -57,7 +128,9 @@ export function FeedbackView({ items }: { items: FeedbackWithSource[] }) {
             <p className="text-sm text-muted-foreground">
               {query.trim()
                 ? "Niks gevonden. Probeer een ander woord."
-                : "Nog geen feedback ontvangen. Vraag feedback aan via de knop rechts boven, of wacht op feedback na een 1-op-1 of functioneringsgesprek."}
+                : filter !== "all"
+                  ? "Geen feedback in deze categorie. Probeer een ander filter."
+                  : "Nog geen feedback ontvangen. Vraag feedback aan via de knop rechts boven, of wacht op feedback na een 1-op-1 of functioneringsgesprek."}
             </p>
           </div>
         ) : (
