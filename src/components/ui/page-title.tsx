@@ -27,7 +27,7 @@ export function PageTitle({
           <Icon className="h-5 w-5" strokeWidth={1.75} />
         </span>
         <div className="min-w-0">
-          <h1 className="text-[24px] font-semibold leading-tight tracking-tight md:text-[28px]">
+          <h1 className="font-heading text-[24px] font-semibold leading-tight tracking-tight md:text-[28px]">
             {title}
           </h1>
           {subtitle ? (

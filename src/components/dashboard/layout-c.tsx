@@ -238,7 +238,7 @@ export function LayoutC({ data }: { data: DashboardData }) {
     <div className="flex flex-col gap-8">
       {/* Welcome */}
       <header>
-        <h1 className="text-[30px] font-semibold tracking-tight leading-tight">
+        <h1 className="font-heading text-[30px] font-semibold tracking-tight leading-tight">
           Welkom {firstName}
         </h1>
         <p className="mt-0.5 text-[13px] text-foreground/40">
@@ -252,7 +252,7 @@ export function LayoutC({ data }: { data: DashboardData }) {
         {/* Op je bord */}
         <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
           <div className="px-6 py-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <h2 className="font-heading text-[13px] font-semibold tracking-tight text-foreground/80">
               Op je bord
             </h2>
           </div>
@@ -287,7 +287,7 @@ export function LayoutC({ data }: { data: DashboardData }) {
         {/* Actiepunten */}
         <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <h2 className="font-heading text-[13px] font-semibold tracking-tight text-foreground/80">
               Actiepunten
             </h2>
             <Link
@@ -329,7 +329,7 @@ export function LayoutC({ data }: { data: DashboardData }) {
 
       {/* Snelkoppelingen */}
       <section>
-        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="mb-4 font-heading text-[13px] font-semibold tracking-tight text-foreground/80">
           Snelkoppelingen
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
