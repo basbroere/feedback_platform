@@ -33,7 +33,6 @@ export type PerformanceReviewListItem = {
   scheduled_at: string | null;
   template_name: string | null;
   has_employee_input: boolean;
-  has_manager_input: boolean;
   has_peer_submitted: boolean;
   has_manager_submitted: boolean;
   employee: PersonRef;
@@ -46,6 +45,7 @@ export type PerformanceReviewFull = {
   employee_id: string;
   template_id: string | null;
   status: PerformanceReviewStatus;
+  subject: string | null;
   cycle_started_at: string;
   completed_at: string | null;
   scheduled_at: string | null;

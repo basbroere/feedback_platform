@@ -13,7 +13,7 @@ export function RecentFeedback({ items }: { items: FeedbackWithSource[] }) {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
           Recente feedback
         </h2>
         <Link

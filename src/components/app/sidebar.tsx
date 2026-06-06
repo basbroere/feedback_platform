@@ -35,7 +35,7 @@ type NavSection = {
 
 function navSections(persona: Persona): NavSection[] {
   const home: NavItem = { href: "/dashboard", label: "Home", icon: LayoutGrid, tone: "primary" };
-  const team: NavItem = { href: "/team", label: "Team", icon: UsersRound, tone: "violet" };
+  const team: NavItem = { href: "/team", label: "Dossiers", icon: UsersRound, tone: "violet" };
   const actiepunten: NavItem = { href: "/actiepunten", label: "Actiepunten", icon: CheckSquare, tone: "emerald" };
   const feedback: NavItem = { href: "/feedback", label: "Feedback", icon: MessageCircle, tone: "primary" };
   const kennisbank: NavItem = { href: "/kennisbank", label: "Kennisbank", icon: BookOpen, tone: "sky" };
@@ -83,7 +83,7 @@ export function AppSidebar({
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4">
         {sections.map((section) => (
           <div key={section.title}>
-            <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            <p className="px-2 pb-2 text-[11.5px] font-medium font-heading text-muted-foreground/70">
               {section.title}
             </p>
             <ul className="space-y-1">

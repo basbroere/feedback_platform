@@ -27,7 +27,7 @@ export function PersonaPicker({
     <div className="mt-7 space-y-5">
       {teams.map((team) => (
         <section key={team.id}>
-          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <h2 className="text-[12px] font-medium font-heading text-muted-foreground">
             {team.name}
           </h2>
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -58,7 +58,7 @@ export function PersonaPicker({
                       </p>
                       <span
                         className={cn(
-                          "mt-0.5 inline-flex items-center rounded px-1 py-px text-[9.5px] font-semibold uppercase tracking-[0.1em]",
+                          "mt-0.5 inline-flex items-center rounded px-1 py-px text-[11px] font-medium font-heading",
                           ROLE_TONE[m.role] ?? ROLE_TONE.employee,
                         )}
                       >

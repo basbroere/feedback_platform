@@ -547,7 +547,7 @@ function DetailModal({
         </div>
         {editing ? (
           <div className="grid gap-2">
-            <Label htmlFor="ai-edit-desc" className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="ai-edit-desc" className="text-[12.5px] font-medium font-heading text-muted-foreground">
               Beschrijving
             </Label>
             <Input
@@ -569,7 +569,7 @@ function DetailModal({
       {/* Omschrijving */}
       {editing ? (
         <div className="mx-6 mt-4 grid gap-2">
-          <Label htmlFor="ai-edit-notes" className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <Label htmlFor="ai-edit-notes" className="text-[12.5px] font-medium font-heading text-muted-foreground">
             Omschrijving
           </Label>
           <Textarea
@@ -582,7 +582,7 @@ function DetailModal({
         </div>
       ) : currentItem.notes ? (
         <div className="mx-6 mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3.5 dark:border-amber-900/30 dark:bg-amber-950/20">
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-700/70 dark:text-amber-400/70">
+          <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-medium font-heading text-amber-700/70 dark:text-amber-400/70">
             <StickyNote className="h-3.5 w-3.5" strokeWidth={1.75} />
             Omschrijving
           </div>
@@ -605,7 +605,7 @@ function DetailModal({
           <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5">
             <Label
               htmlFor="ai-edit-target"
-              className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+              className="text-[11.5px] font-medium font-heading text-muted-foreground"
             >
               <Target className="h-3.5 w-3.5" strokeWidth={1.75} />
               Streefdatum
@@ -620,7 +620,7 @@ function DetailModal({
           </div>
         ) : item.source ? (
           <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[11.5px] font-medium font-heading text-muted-foreground">
               {sourceKind === "one_on_one" ? (
                 <MessageSquareText className="h-3.5 w-3.5" strokeWidth={1.75} />
               ) : sourceKind === "personal" ? (
@@ -881,7 +881,7 @@ function InfoTile({
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11.5px] font-medium font-heading text-muted-foreground">
         {icon}
         {label}
       </div>

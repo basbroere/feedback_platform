@@ -16,11 +16,13 @@ export default async function TeamPage() {
       <PageTitle
         icon={UsersRound}
         tone="violet"
-        title={persona.team?.name ?? "Jouw team"}
+        title="Dossiers"
         subtitle={
           members.length === 0
             ? "Geen teamleden gekoppeld."
-            : `${members.length} ${members.length === 1 ? "teamlid" : "teamleden"}`
+            : `${members.length} ${members.length === 1 ? "dossier" : "dossiers"}${
+                persona.team?.name ? ` · ${persona.team.name}` : ""
+              }`
         }
       />
 

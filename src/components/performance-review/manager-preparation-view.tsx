@@ -30,6 +30,10 @@ import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { RatingBInput } from "@/components/templates/rating-input";
 import { StartMeetingButton } from "./start-meeting-button";
 import { TemplateAnswers } from "./template-answers";
+import {
+  ReviewActionsMenu,
+  ReviewSubjectInput,
+} from "./review-header-controls";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -70,15 +74,22 @@ export function ManagerPreparationView({
             size="lg"
           />
           <div className="min-w-0 flex-1 space-y-1">
-            <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
-              360 functioneringsgesprek met {review.employee.name}
-            </h1>
+            <ReviewSubjectInput
+              performanceReviewId={review.id}
+              initialSubject={review.subject}
+              employeeName={review.employee.name}
+            />
             <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 text-emerald-500" />
               Gepland op {review.scheduled_at ? formatDateTime(review.scheduled_at) : formatDate(review.cycle_started_at)}
               {review.template?.name ? ` · ${review.template.name}` : ""}
             </p>
           </div>
+          <ReviewActionsMenu
+            performanceReviewId={review.id}
+            employeeId={review.employee.id}
+            scheduledAt={review.scheduled_at}
+          />
         </div>
       </header>
 
@@ -187,6 +198,20 @@ function PreparationStatusGrid({
         }
       />
       <StatusCard
+        icon={<MessageSquareText className="h-4 w-4" />}
+        title="Jouw feedback"
+        status={
+          managerHasSubmitted ? "done" : manager ? "draft" : "waiting"
+        }
+        line={
+          managerHasSubmitted
+            ? `Verstuurd naar ${firstName}`
+            : manager
+              ? "Concept opgeslagen"
+              : "Wacht op jouw inzending"
+        }
+      />
+      <StatusCard
         icon={<ArrowUp className="h-4 w-4" />}
         title="Upward feedback"
         status={
@@ -202,20 +227,6 @@ function PreparationStatusGrid({
               ? "Verborgen tot afronding"
               : "Geen feedback gegeven"
             : "Verborgen tot jouw inzending"
-        }
-      />
-      <StatusCard
-        icon={<MessageSquareText className="h-4 w-4" />}
-        title="Jouw feedback"
-        status={
-          managerHasSubmitted ? "done" : manager ? "draft" : "waiting"
-        }
-        line={
-          managerHasSubmitted
-            ? `Verstuurd naar ${firstName}`
-            : manager
-              ? "Concept opgeslagen"
-              : "Wacht op jouw inzending"
         }
       />
     </div>
@@ -464,7 +475,7 @@ function StatusCard({
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="flex items-center gap-1.5 font-heading text-[13.5px] font-semibold text-muted-foreground">
           {icon}
           {title}
         </p>

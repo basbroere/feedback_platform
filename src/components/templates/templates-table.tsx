@@ -147,7 +147,7 @@ function TemplateTable({
     <div className="overflow-x-auto">
       <table className="w-full text-left">
         <thead>
-          <tr className="border-b border-border/70 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <tr className="border-b border-border/70 text-[12.5px] font-medium font-heading text-muted-foreground">
             <th className="pb-2.5 pr-4 font-medium">Naam</th>
             <th className="pb-2.5 pr-4 font-medium">Categorie</th>
             <th className="pb-2.5 pr-4 font-medium">Vragen</th>
@@ -288,7 +288,7 @@ export function TemplatesTable({ templates }: { templates: ManagedTemplate[] }) 
     <>
       <div className="space-y-8">
         <section>
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <h3 className="mb-3 text-[12.5px] font-medium font-heading text-muted-foreground">
             Actief
             <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
               {active.length}
@@ -309,7 +309,7 @@ export function TemplatesTable({ templates }: { templates: ManagedTemplate[] }) 
 
         {archived.length > 0 && (
           <section>
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="mb-3 text-[12.5px] font-medium font-heading text-muted-foreground">
               Gearchiveerd
               <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
                 {archived.length}

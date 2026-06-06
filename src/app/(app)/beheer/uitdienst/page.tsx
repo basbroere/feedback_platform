@@ -62,7 +62,7 @@ export default async function UitDienstOverzichtPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-border/70 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <tr className="border-b border-border/70 text-[12.5px] font-medium font-heading text-muted-foreground">
                     <th className="py-2 pr-3 font-medium">Naam</th>
                     <th className="py-2 pr-3 font-medium">Rol</th>
                     <th className="py-2 pr-3 font-medium">Team</th>

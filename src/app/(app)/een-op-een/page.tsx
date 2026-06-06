@@ -91,7 +91,7 @@ export default async function EenOpEenIndex() {
       />
 
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
           Opkomend
         </h2>
         {upcoming ? (
@@ -136,7 +136,7 @@ export default async function EenOpEenIndex() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
           Recent
         </h2>
         <HistoryTable

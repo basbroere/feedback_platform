@@ -21,11 +21,21 @@ import { cn } from "@/lib/utils";
 export function FeedbackDetailDialog({
   item,
   trigger,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   item: FeedbackWithSource;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const author = item.author;
   const dateLabel = item.submitted_at ?? item.created_at;
   const sourceLabel = item.source?.label ?? "Feedback";
@@ -33,15 +43,17 @@ export function FeedbackDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          "w-full text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40 rounded-2xl",
-        )}
-      >
-        {trigger}
-      </button>
+      {trigger ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={cn(
+            "w-full text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40 rounded-2xl",
+          )}
+        >
+          {trigger}
+        </button>
+      ) : null}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <div className="flex flex-wrap items-center gap-3">

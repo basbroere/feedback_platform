@@ -12,14 +12,24 @@ import {
   Eye,
   Lock,
   MessageSquareText,
+  Pencil,
   Plus,
   Sparkles,
+  Trash2,
   UserCircle2,
   Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +42,11 @@ import {
   saveManagerPerformanceReviewMeeting,
   submitManagerCycleFeedback,
 } from "@/lib/performance-reviews/actions";
-import { updateActionItemStatus } from "@/lib/action-items/actions";
+import {
+  deleteActionItem,
+  updateActionItemDetails,
+  updateActionItemStatus,
+} from "@/lib/action-items/actions";
 import type {
   CycleInputs,
   DossierActionItem,
@@ -42,6 +56,7 @@ import type { FeedbackWithSource } from "@/lib/feedback/types";
 import { FeedbackRow } from "@/components/feedback/feedback-view";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { RatingBInput } from "@/components/templates/rating-input";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TemplateAnswers } from "./template-answers";
@@ -90,6 +105,19 @@ export function PerformanceReviewMeetingView({
     setCreated((p) =>
       p.map((it) => (it.id === id ? { ...it, status } : it)),
     );
+  }
+
+  function patchCreated(
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) {
+    setCreated((p) =>
+      p.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+    );
+  }
+
+  function removeCreated(id: string) {
+    setCreated((p) => p.filter((it) => it.id !== id));
   }
 
   function persist(complete: boolean) {
@@ -182,12 +210,6 @@ export function PerformanceReviewMeetingView({
         peer={cycleInputs.peer}
       />
 
-      <UpwardFeedbackCard
-        questions={upwardQuestions}
-        upward={cycleInputs.upward}
-        employeeName={review.employee.name}
-      />
-
       <ManagerCycleFeedbackCard
         performanceReviewId={review.id}
         questions={questions}
@@ -195,10 +217,23 @@ export function PerformanceReviewMeetingView({
         disabled={isCompleted}
       />
 
+      <UpwardFeedbackCard
+        questions={upwardQuestions}
+        upward={cycleInputs.upward}
+        employeeName={review.employee.name}
+      />
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <CardTitle>Dossier afgelopen half jaar</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              Dossier afgelopen half jaar
+              <InfoTooltip label="Uitleg dossier">
+                We tonen alles uit de zes maanden voor de start van deze
+                cyclus, zodat jij en {review.employee.name.split(" ")[0]} met
+                dezelfde context het gesprek ingaan.
+              </InfoTooltip>
+            </CardTitle>
             <span className="text-[12px] text-muted-foreground">
               {formatDate(windowStart)} tot {formatDate(windowEnd)}
             </span>
@@ -206,14 +241,14 @@ export function PerformanceReviewMeetingView({
         </CardHeader>
         <CardContent className="space-y-6">
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Voltooide actiepunten ({dossierActionItems.length})
             </h3>
             <CompletedActionItemsList items={dossierActionItems} />
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Ontvangen feedback ({dossierFeedback.length})
             </h3>
             <ReceivedFeedbackBrowser items={dossierFeedback} />
@@ -223,7 +258,13 @@ export function PerformanceReviewMeetingView({
 
       <Card>
         <CardHeader>
-          <CardTitle>Nieuwe actiepunten</CardTitle>
+          <CardTitle className="flex items-center gap-1.5">
+            Nieuwe actiepunten
+            <InfoTooltip label="Uitleg actiepunten">
+              Deze punten lopen mee als richtpunten naar het volgende
+              beoordelingsgesprek. Geen harde deadlines, wel een rode draad.
+            </InfoTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <NewActionItems
@@ -231,6 +272,8 @@ export function PerformanceReviewMeetingView({
             items={created}
             onCreated={(item) => setCreated((p) => [...p, item])}
             onStatus={setCreatedStatus}
+            onEdit={patchCreated}
+            onDelete={removeCreated}
             disabled={isCompleted}
           />
         </CardContent>
@@ -351,18 +394,6 @@ function CycleStatusGrid({
         }
       />
       <StatusCard
-        icon={<ArrowUp className="h-4 w-4" />}
-        title="Upward feedback"
-        status={upwardSubmitted ? "done" : upwardHasContent ? "draft" : "empty"}
-        line={
-          upwardSubmitted
-            ? `${firstName} heeft feedback gegeven`
-            : upwardHasContent
-              ? "Concept, zichtbaar na afronding"
-              : "Geen feedback gegeven"
-        }
-      />
-      <StatusCard
         icon={<MessageSquareText className="h-4 w-4" />}
         title="Manager-feedback"
         status={
@@ -378,6 +409,18 @@ function CycleStatusGrid({
             : manager
               ? "Concept opgeslagen"
               : "Nog niet gegeven"
+        }
+      />
+      <StatusCard
+        icon={<ArrowUp className="h-4 w-4" />}
+        title="Upward feedback"
+        status={upwardSubmitted ? "done" : upwardHasContent ? "draft" : "empty"}
+        line={
+          upwardSubmitted
+            ? `${firstName} heeft feedback gegeven`
+            : upwardHasContent
+              ? "Concept, zichtbaar na afronding"
+              : "Geen feedback gegeven"
         }
       />
     </div>
@@ -416,7 +459,7 @@ function StatusCard({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="flex items-center gap-1.5 font-heading text-[13.5px] font-semibold text-muted-foreground">
           {icon}
           {title}
         </p>
@@ -782,12 +825,19 @@ function NewActionItems({
   items,
   onCreated,
   onStatus,
+  onEdit,
+  onDelete,
   disabled,
 }: {
   performanceReviewId: string;
   items: ActionItem[];
   onCreated: (item: ActionItem) => void;
   onStatus: (id: string, status: Status) => void;
+  onEdit: (
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) => void;
+  onDelete: (id: string) => void;
   disabled: boolean;
 }) {
   const [drafting, setDrafting] = useState(false);
@@ -803,7 +853,13 @@ function NewActionItems({
       {items.length > 0 ? (
         <ul className="space-y-2">
           {items.map((it) => (
-            <ActionItemRow key={it.id} item={it} onStatus={onStatus} />
+            <ActionItemRow
+              key={it.id}
+              item={it}
+              onStatus={onStatus}
+              onEdit={disabled ? undefined : onEdit}
+              onDelete={disabled ? undefined : onDelete}
+            />
           ))}
         </ul>
       ) : null}
@@ -941,58 +997,263 @@ function DraftActionItem({
 function ActionItemRow({
   item,
   onStatus,
+  onEdit,
+  onDelete,
 }: {
   item: ActionItem;
   onStatus: (id: string, status: Status) => void;
+  onEdit?: (
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) => void;
+  onDelete?: (id: string) => void;
 }) {
   const completed = item.status === "completed";
-  return (
-    <li
-      className={cn(
-        "flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm",
-        completed && "opacity-70",
-      )}
-    >
-      <button
-        type="button"
-        aria-label={completed ? "Markeer als open" : "Markeer als afgerond"}
-        onClick={() => {
-          const next: Status = completed ? "open" : "completed";
-          onStatus(item.id, next);
-          void updateActionItemStatus({ id: item.id, status: next }).catch(
-            () => {
-              onStatus(item.id, completed ? "completed" : "open");
-            },
-          );
+  const canManage = Boolean(onEdit && onDelete);
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isDeletePending, startDeleteTransition] = useTransition();
+
+  function submitDelete() {
+    if (!onDelete) return;
+    setActionError(null);
+    startDeleteTransition(async () => {
+      try {
+        await deleteActionItem(item.id);
+        onDelete(item.id);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Verwijderen mislukt");
+      }
+    });
+  }
+
+  if (editing && canManage) {
+    return (
+      <EditActionItemRow
+        item={item}
+        onCancel={() => {
+          setEditing(false);
+          setActionError(null);
         }}
+        onSaved={(patch) => {
+          onEdit!(item.id, patch);
+          setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <li
         className={cn(
-          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-          completed
-            ? "border-emerald-500 bg-emerald-500 text-white"
-            : "border-border bg-background text-transparent hover:border-foreground/30",
+          "group flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm",
+          completed && "opacity-70",
         )}
       >
-        <Check className="h-3 w-3" strokeWidth={2.5} />
-      </button>
-      <div className="min-w-0 flex-1">
-        <p
+        <button
+          type="button"
+          aria-label={completed ? "Markeer als open" : "Markeer als afgerond"}
+          onClick={() => {
+            const next: Status = completed ? "open" : "completed";
+            onStatus(item.id, next);
+            void updateActionItemStatus({ id: item.id, status: next }).catch(
+              () => {
+                onStatus(item.id, completed ? "completed" : "open");
+              },
+            );
+          }}
           className={cn(
-            "text-[14px] leading-snug",
-            completed && "line-through text-muted-foreground",
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+            completed
+              ? "border-emerald-500 bg-emerald-500 text-white"
+              : "border-border bg-background text-transparent hover:border-foreground/30",
           )}
         >
-          {item.description}
-        </p>
-        {item.notes ? (
+          <Check className="h-3 w-3" strokeWidth={2.5} />
+        </button>
+        <div className="min-w-0 flex-1">
           <p
             className={cn(
-              "mt-1 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground",
-              completed && "line-through",
+              "text-[14px] leading-snug",
+              completed && "line-through text-muted-foreground",
             )}
           >
-            {item.notes}
+            {item.description}
           </p>
+          {item.notes ? (
+            <p
+              className={cn(
+                "mt-1 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground",
+                completed && "line-through",
+              )}
+            >
+              {item.notes}
+            </p>
+          ) : null}
+          {actionError ? (
+            <p className="mt-1 text-xs text-destructive">{actionError}</p>
+          ) : null}
+        </div>
+        {canManage ? (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label="Actiepunt bewerken"
+              title="Bewerken"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Actiepunt verwijderen"
+              title="Verwijderen"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : null}
+      </li>
+
+      {canManage ? (
+        <Dialog
+          open={confirmDelete}
+          onOpenChange={(next) => {
+            if (!isDeletePending) setConfirmDelete(next);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Actiepunt verwijderen?</DialogTitle>
+              <DialogDescription>
+                Het actiepunt verdwijnt uit dit gesprek en uit de actiepunten
+                van de eigenaar.
+              </DialogDescription>
+            </DialogHeader>
+            {actionError ? (
+              <p className="text-sm text-destructive">{actionError}</p>
+            ) : null}
+            <DialogFooter className="flex flex-row justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmDelete(false)}
+                disabled={isDeletePending}
+              >
+                Annuleer
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={submitDelete}
+                disabled={isDeletePending}
+              >
+                {isDeletePending ? "Verwijderen..." : "Ja, verwijderen"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
+  );
+}
+
+function EditActionItemRow({
+  item,
+  onCancel,
+  onSaved,
+}: {
+  item: ActionItem;
+  onCancel: () => void;
+  onSaved: (patch: { description: string; notes: string | null }) => void;
+}) {
+  const [title, setTitle] = useState(item.description);
+  const [description, setDescription] = useState(item.notes ?? "");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    const t = title.trim();
+    if (!t) return;
+    const notes = description.trim() ? description.trim() : null;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateActionItemDetails({
+          id: item.id,
+          description: t,
+          notes,
+        });
+        onSaved({ description: t, notes });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Opslaan mislukt");
+      }
+    });
+  }
+
+  return (
+    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
+      <span
+        aria-hidden
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background"
+      />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Input
+          autoFocus
+          placeholder="Titel van het actiepunt"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          disabled={isPending}
+          className="h-8 text-[14px]"
+          aria-label="Titel"
+        />
+        <Textarea
+          placeholder="Beschrijving (optioneel)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={isPending}
+          rows={2}
+          className="text-[13px]"
+          aria-label="Beschrijving"
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+      <div className="flex shrink-0 flex-col gap-1">
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="secondary"
+          onClick={submit}
+          disabled={isPending || title.trim().length === 0}
+          aria-label="Wijziging opslaan"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          onClick={onCancel}
+          disabled={isPending}
+          aria-label="Annuleren"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </li>
   );

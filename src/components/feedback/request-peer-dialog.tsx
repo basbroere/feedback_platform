@@ -153,11 +153,11 @@ export function RequestPeerDialog({
                         return (
                           <div key={team.id} className="space-y-1.5">
                             <div className="flex items-center gap-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                              <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
                                 {team.name}
                               </p>
                               {isCrossTeam ? (
-                                <span className="text-[10px] uppercase tracking-[0.13em] text-muted-foreground/60">
+                                <span className="text-[11.5px] font-medium font-heading text-muted-foreground/60">
                                   cross-team
                                 </span>
                               ) : null}

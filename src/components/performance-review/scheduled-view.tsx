@@ -8,15 +8,27 @@ import {
   CalendarClock,
   Check,
   MessageSquareText,
+  Pencil,
   Plus,
   Sparkles,
+  Trash2,
   UserCircle2,
   Users,
   Eye,
   Lock,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionItem, TemplateQuestion } from "@/lib/one-on-ones/types";
@@ -24,7 +36,11 @@ import {
   createActionItemForPerformanceReview,
   saveManagerPerformanceReviewMeeting,
 } from "@/lib/performance-reviews/actions";
-import { updateActionItemStatus } from "@/lib/action-items/actions";
+import {
+  deleteActionItem,
+  updateActionItemDetails,
+  updateActionItemStatus,
+} from "@/lib/action-items/actions";
 import type {
   CycleInputs,
   DossierActionItem,
@@ -33,7 +49,12 @@ import type {
 import type { FeedbackWithSource } from "@/lib/feedback/types";
 import { FeedbackRow } from "@/components/feedback/feedback-view";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { TemplateAnswers } from "./template-answers";
+import {
+  ReviewActionsMenu,
+  ReviewSubjectInput,
+} from "./review-header-controls";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +90,17 @@ export function PerformanceReviewScheduledView({
 
   function setCreatedStatus(id: string, status: Status) {
     setCreated((p) => p.map((it) => (it.id === id ? { ...it, status } : it)));
+  }
+
+  function patchCreated(
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) {
+    setCreated((p) => p.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  }
+
+  function removeCreated(id: string) {
+    setCreated((p) => p.filter((it) => it.id !== id));
   }
 
   function persist(complete: boolean) {
@@ -112,15 +144,22 @@ export function PerformanceReviewScheduledView({
             size="lg"
           />
           <div className="min-w-0 flex-1 space-y-1">
-            <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
-              360 functioneringsgesprek met {review.employee.name}
-            </h1>
+            <ReviewSubjectInput
+              performanceReviewId={review.id}
+              initialSubject={review.subject}
+              employeeName={review.employee.name}
+            />
             <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 text-emerald-500" />
               Ingepland op {formatDateTime(review.scheduled_at ?? "")}
               {review.template?.name ? ` · ${review.template.name}` : ""}
             </p>
           </div>
+          <ReviewActionsMenu
+            performanceReviewId={review.id}
+            employeeId={review.employee.id}
+            scheduledAt={review.scheduled_at}
+          />
         </div>
       </header>
 
@@ -167,6 +206,21 @@ export function PerformanceReviewScheduledView({
         </FeedbackColumn>
 
         <FeedbackColumn
+          icon={<MessageSquareText className="h-4 w-4 text-amber-500" />}
+          title="Jouw feedback"
+        >
+          {cycleInputs.manager?.status === "submitted" ? (
+            <TemplateAnswers
+              questions={questions}
+              answers={cycleInputs.manager.responses}
+              emptyLabel="Geen vragen ingevuld."
+            />
+          ) : (
+            <Empty>Je hebt nog geen feedback verstuurd.</Empty>
+          )}
+        </FeedbackColumn>
+
+        <FeedbackColumn
           icon={<ArrowUp className="h-4 w-4 text-emerald-500" />}
           title="Upward feedback"
         >
@@ -182,28 +236,20 @@ export function PerformanceReviewScheduledView({
             <Empty>Geen upward feedback gegeven.</Empty>
           )}
         </FeedbackColumn>
-
-        <FeedbackColumn
-          icon={<MessageSquareText className="h-4 w-4 text-amber-500" />}
-          title="Jouw feedback"
-        >
-          {cycleInputs.manager?.status === "submitted" ? (
-            <TemplateAnswers
-              questions={questions}
-              answers={cycleInputs.manager.responses}
-              emptyLabel="Geen vragen ingevuld."
-            />
-          ) : (
-            <Empty>Je hebt nog geen feedback verstuurd.</Empty>
-          )}
-        </FeedbackColumn>
       </div>
 
       {/* Dossier */}
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <CardTitle>Dossier afgelopen half jaar</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              Dossier afgelopen half jaar
+              <InfoTooltip label="Uitleg dossier">
+                We tonen alles uit de zes maanden voor de start van deze
+                cyclus, zodat jij en {review.employee.name.split(" ")[0]} met
+                dezelfde context het gesprek ingaan.
+              </InfoTooltip>
+            </CardTitle>
             <span className="text-[12px] text-muted-foreground">
               {formatDate(windowStart)} tot {formatDate(windowEnd)}
             </span>
@@ -211,13 +257,13 @@ export function PerformanceReviewScheduledView({
         </CardHeader>
         <CardContent className="space-y-6">
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Voltooide actiepunten ({dossierActionItems.length})
             </h3>
             <CompletedActionItemsList items={dossierActionItems} />
           </section>
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Ontvangen feedback ({dossierFeedback.length})
             </h3>
             <ReceivedFeedbackBrowser items={dossierFeedback} />
@@ -228,7 +274,13 @@ export function PerformanceReviewScheduledView({
       {/* Actiepunten */}
       <Card>
         <CardHeader>
-          <CardTitle>Actiepunten uit dit gesprek</CardTitle>
+          <CardTitle className="flex items-center gap-1.5">
+            Actiepunten uit dit gesprek
+            <InfoTooltip label="Uitleg actiepunten">
+              Deze punten lopen mee als richtpunten naar het volgende
+              beoordelingsgesprek. Geen harde deadlines, wel een rode draad.
+            </InfoTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <NewActionItems
@@ -236,6 +288,8 @@ export function PerformanceReviewScheduledView({
             items={created}
             onCreated={(item) => setCreated((p) => [...p, item])}
             onStatus={setCreatedStatus}
+            onEdit={patchCreated}
+            onDelete={removeCreated}
             disabled={false}
           />
         </CardContent>
@@ -440,12 +494,19 @@ function NewActionItems({
   items,
   onCreated,
   onStatus,
+  onEdit,
+  onDelete,
   disabled,
 }: {
   performanceReviewId: string;
   items: ActionItem[];
   onCreated: (item: ActionItem) => void;
   onStatus: (id: string, status: Status) => void;
+  onEdit: (
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) => void;
+  onDelete: (id: string) => void;
   disabled: boolean;
 }) {
   const [drafting, setDrafting] = useState(false);
@@ -460,7 +521,13 @@ function NewActionItems({
       {items.length > 0 ? (
         <ul className="space-y-2">
           {items.map((it) => (
-            <ActionItemRow key={it.id} item={it} onStatus={onStatus} />
+            <ActionItemRow
+              key={it.id}
+              item={it}
+              onStatus={onStatus}
+              onEdit={disabled ? undefined : onEdit}
+              onDelete={disabled ? undefined : onDelete}
+            />
           ))}
         </ul>
       ) : null}
@@ -490,11 +557,23 @@ function NewActionItems({
 function ActionItemRow({
   item,
   onStatus,
+  onEdit,
+  onDelete,
 }: {
   item: ActionItem;
   onStatus: (id: string, status: Status) => void;
+  onEdit?: (
+    id: string,
+    patch: { description?: string; notes?: string | null },
+  ) => void;
+  onDelete?: (id: string) => void;
 }) {
+  const canManage = Boolean(onEdit && onDelete);
   const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isDeletePending, startDeleteTransition] = useTransition();
 
   function toggle() {
     const next: Status = item.status === "completed" ? "open" : "completed";
@@ -504,35 +583,227 @@ function ActionItemRow({
     });
   }
 
+  function submitDelete() {
+    if (!onDelete) return;
+    setActionError(null);
+    startDeleteTransition(async () => {
+      try {
+        await deleteActionItem(item.id);
+        onDelete(item.id);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Verwijderen mislukt");
+      }
+    });
+  }
+
+  if (editing && canManage) {
+    return (
+      <EditActionItemRow
+        item={item}
+        onCancel={() => {
+          setEditing(false);
+          setActionError(null);
+        }}
+        onSaved={(patch) => {
+          onEdit!(item.id, patch);
+          setEditing(false);
+        }}
+      />
+    );
+  }
+
   return (
-    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={isPending}
-        className={cn(
-          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
-          item.status === "completed"
-            ? "border-emerald-500 bg-emerald-500 text-white"
-            : "border-border bg-card hover:border-emerald-400",
-        )}
-      >
-        {item.status === "completed" ? (
-          <Check className="h-3 w-3" strokeWidth={2.5} />
-        ) : null}
-      </button>
-      <div className="min-w-0 flex-1">
-        <p
+    <>
+      <li className="group flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={isPending}
           className={cn(
-            "text-[14px] leading-snug",
-            item.status === "completed" && "text-muted-foreground line-through",
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+            item.status === "completed"
+              ? "border-emerald-500 bg-emerald-500 text-white"
+              : "border-border bg-card hover:border-emerald-400",
           )}
         >
-          {item.description}
-        </p>
-        {item.notes ? (
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{item.notes}</p>
+          {item.status === "completed" ? (
+            <Check className="h-3 w-3" strokeWidth={2.5} />
+          ) : null}
+        </button>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-[14px] leading-snug",
+              item.status === "completed" && "text-muted-foreground line-through",
+            )}
+          >
+            {item.description}
+          </p>
+          {item.notes ? (
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{item.notes}</p>
+          ) : null}
+          {actionError ? (
+            <p className="mt-1 text-xs text-destructive">{actionError}</p>
+          ) : null}
+        </div>
+        {canManage ? (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label="Actiepunt bewerken"
+              title="Bewerken"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Actiepunt verwijderen"
+              title="Verwijderen"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : null}
+      </li>
+
+      {canManage ? (
+        <Dialog
+          open={confirmDelete}
+          onOpenChange={(next) => {
+            if (!isDeletePending) setConfirmDelete(next);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Actiepunt verwijderen?</DialogTitle>
+              <DialogDescription>
+                Het actiepunt verdwijnt uit dit gesprek en uit de actiepunten
+                van de eigenaar.
+              </DialogDescription>
+            </DialogHeader>
+            {actionError ? (
+              <p className="text-sm text-destructive">{actionError}</p>
+            ) : null}
+            <DialogFooter className="flex flex-row justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmDelete(false)}
+                disabled={isDeletePending}
+              >
+                Annuleer
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={submitDelete}
+                disabled={isDeletePending}
+              >
+                {isDeletePending ? "Verwijderen..." : "Ja, verwijderen"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
+  );
+}
+
+function EditActionItemRow({
+  item,
+  onCancel,
+  onSaved,
+}: {
+  item: ActionItem;
+  onCancel: () => void;
+  onSaved: (patch: { description: string; notes: string | null }) => void;
+}) {
+  const [title, setTitle] = useState(item.description);
+  const [description, setDescription] = useState(item.notes ?? "");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    const t = title.trim();
+    if (!t) return;
+    const notes = description.trim() ? description.trim() : null;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await updateActionItemDetails({
+          id: item.id,
+          description: t,
+          notes,
+        });
+        onSaved({ description: t, notes });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Opslaan mislukt");
+      }
+    });
+  }
+
+  return (
+    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
+      <span
+        aria-hidden
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background"
+      />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Input
+          autoFocus
+          placeholder="Titel van het actiepunt"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          disabled={isPending}
+          className="h-8 text-[14px]"
+          aria-label="Titel"
+        />
+        <Textarea
+          placeholder="Beschrijving (optioneel)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={isPending}
+          rows={2}
+          className="text-[13px]"
+          aria-label="Beschrijving"
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+      <div className="flex shrink-0 flex-col gap-1">
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="secondary"
+          onClick={submit}
+          disabled={isPending || title.trim().length === 0}
+          aria-label="Wijziging opslaan"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          onClick={onCancel}
+          disabled={isPending}
+          aria-label="Annuleren"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </li>
   );

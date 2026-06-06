@@ -35,7 +35,7 @@ const ALL_ITEMS: Record<string, NavItem> = {
   actiepunten: { href: "/actiepunten", label: "Actiepunten", icon: CheckSquare, tone: "emerald" },
   feedback: { href: "/feedback", label: "Feedback", icon: MessageCircle, tone: "primary" },
   eenOpEen: { href: "/een-op-een", label: "1-op-1", icon: MessageSquareText, tone: "blue" },
-  team: { href: "/team", label: "Team", icon: UsersRound, tone: "violet" },
+  team: { href: "/team", label: "Dossiers", icon: UsersRound, tone: "violet" },
   kennisbank: { href: "/kennisbank", label: "Kennisbank", icon: BookOpen, tone: "sky" },
   functioneringsgesprek: {
     href: "/functioneringsgesprek",
@@ -150,7 +150,7 @@ export function MobileBottomNav({
                   </ul>
 
                   <div className="border-t border-border pt-4">
-                    <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                    <p className="px-1 pb-2 text-[11.5px] font-medium font-heading text-muted-foreground/70">
                       Persona
                     </p>
                     <PersonaSwitcher current={persona} teams={teams} />

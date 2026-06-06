@@ -206,7 +206,7 @@ export function LayoutB({ data }: { data: DashboardData }) {
         {/* Todo checklist */}
         <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
               Op je bord
             </h2>
             {todos.length > 4 ? (
@@ -263,20 +263,20 @@ export function LayoutB({ data }: { data: DashboardData }) {
         {agenda.length > 0 ? (
           <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
             <div className="px-5 pt-4 pb-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Aankomende gesprekken
               </h2>
             </div>
             <table className="w-full">
               <thead>
                 <tr className="border-y border-border">
-                  <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                  <th className="px-5 py-2 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
                     Persoon
                   </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                  <th className="px-3 py-2 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
                     Datum
                   </th>
-                  <th className="hidden sm:table-cell px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                  <th className="hidden sm:table-cell px-3 py-2 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
                     Type
                   </th>
                   <th className="px-5 py-2" />
@@ -325,7 +325,7 @@ export function LayoutB({ data }: { data: DashboardData }) {
         {isManager && staleMembers.length > 0 ? (
           <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Tijd voor een 1-op-1?
               </h2>
               <Link
@@ -339,10 +339,10 @@ export function LayoutB({ data }: { data: DashboardData }) {
             <table className="w-full">
               <thead>
                 <tr className="border-y border-border">
-                  <th className="px-5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                  <th className="px-5 py-2 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
                     Naam
                   </th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                  <th className="px-3 py-2 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
                     Laatste 1-op-1
                   </th>
                   <th className="px-5 py-2" />
@@ -387,7 +387,7 @@ export function LayoutB({ data }: { data: DashboardData }) {
         ) : !isManager && feedback.length > 0 ? (
           <div className="rounded-2xl bg-card shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Recente feedback
               </h2>
               <Link

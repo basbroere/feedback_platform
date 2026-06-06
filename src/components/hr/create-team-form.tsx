@@ -74,7 +74,7 @@ export function AddTeamSheet() {
             className="flex flex-col gap-6 px-6 py-6"
           >
             <section className="space-y-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-600/80">
+              <p className="text-[11.5px] font-medium font-heading text-emerald-600/80">
                 Teamgegevens
               </p>
 

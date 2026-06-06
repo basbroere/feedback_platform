@@ -6,6 +6,36 @@ import { getCurrentPersonaId } from "@/lib/persona/server";
 
 type ActionStatus = "open" | "completed" | "expired";
 
+type SourceRow = {
+  source_id: string | null;
+  source_type: string | null;
+};
+
+async function isSourceManager(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  personaId: string,
+  row: SourceRow,
+): Promise<boolean> {
+  if (!row.source_id) return false;
+  if (row.source_type === "one_on_one") {
+    const { data } = await supabase
+      .from("one_on_ones")
+      .select("manager_id")
+      .eq("id", row.source_id)
+      .maybeSingle();
+    return data?.manager_id === personaId;
+  }
+  if (row.source_type === "performance_review") {
+    const { data } = await supabase
+      .from("performance_reviews")
+      .select("manager_id")
+      .eq("id", row.source_id)
+      .maybeSingle();
+    return data?.manager_id === personaId;
+  }
+  return false;
+}
+
 export async function updateActionItemStatus(input: {
   id: string;
   status: ActionStatus;
@@ -21,16 +51,9 @@ export async function updateActionItemStatus(input: {
     .maybeSingle();
   if (error || !row) throw new Error("Actiepunt niet gevonden");
 
-  // Owner mag altijd. Anders moet je manager zijn van de bron-1-op-1.
+  // Owner mag altijd. Anders moet je manager zijn van de bron (1-op-1 of functioneringsgesprek).
   let allowed = row.owner_id === personaId;
-  if (!allowed && row.source_type === "one_on_one" && row.source_id) {
-    const { data: one } = await supabase
-      .from("one_on_ones")
-      .select("manager_id")
-      .eq("id", row.source_id)
-      .maybeSingle();
-    allowed = one?.manager_id === personaId;
-  }
+  if (!allowed) allowed = await isSourceManager(supabase, personaId, row);
   if (!allowed) throw new Error("Niet toegestaan");
 
   const completedAt =
@@ -157,14 +180,7 @@ export async function updateActionItemDetails(input: {
   if (error || !row) throw new Error("Actiepunt niet gevonden");
 
   let allowed = row.owner_id === personaId;
-  if (!allowed && row.source_type === "one_on_one" && row.source_id) {
-    const { data: one } = await supabase
-      .from("one_on_ones")
-      .select("manager_id")
-      .eq("id", row.source_id)
-      .maybeSingle();
-    allowed = one?.manager_id === personaId;
-  }
+  if (!allowed) allowed = await isSourceManager(supabase, personaId, row);
   if (!allowed) throw new Error("Niet toegestaan");
 
   const patch: Record<string, unknown> = { description };
@@ -179,6 +195,9 @@ export async function updateActionItemDetails(input: {
 
   if (row.source_type === "one_on_one" && row.source_id) {
     revalidatePath(`/een-op-een/${row.source_id}`);
+  }
+  if (row.source_type === "performance_review" && row.source_id) {
+    revalidatePath(`/functioneringsgesprek/${row.source_id}`);
   }
   revalidatePath("/een-op-een");
   revalidatePath("/dashboard");
@@ -198,17 +217,12 @@ export async function deleteActionItem(id: string) {
   if (error || !row) throw new Error("Actiepunt niet gevonden");
 
   // Persoonlijke items: eigenaar mag zelf verwijderen.
-  // 1-op-1-items: alleen de manager van het bron-1-op-1.
+  // 1-op-1- en functioneringsgesprek-items: alleen de manager van de bron.
   let allowed = false;
   if (row.source_type === "personal") {
     allowed = row.owner_id === personaId;
-  } else if (row.source_type === "one_on_one" && row.source_id) {
-    const { data: one } = await supabase
-      .from("one_on_ones")
-      .select("manager_id")
-      .eq("id", row.source_id)
-      .maybeSingle();
-    allowed = one?.manager_id === personaId;
+  } else {
+    allowed = await isSourceManager(supabase, personaId, row);
   }
   if (!allowed) throw new Error("Niet toegestaan");
 
@@ -220,6 +234,9 @@ export async function deleteActionItem(id: string) {
 
   if (row.source_type === "one_on_one" && row.source_id) {
     revalidatePath(`/een-op-een/${row.source_id}`);
+  }
+  if (row.source_type === "performance_review" && row.source_id) {
+    revalidatePath(`/functioneringsgesprek/${row.source_id}`);
   }
   revalidatePath("/een-op-een");
   revalidatePath("/dashboard");

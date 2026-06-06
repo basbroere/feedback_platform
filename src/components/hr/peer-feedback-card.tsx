@@ -88,7 +88,7 @@ export function PeerFeedbackCard({
         <div className="space-y-3 border-t border-border/60 px-4 py-4">
           {feedback.prompt ? (
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Vraag
               </p>
               <p className="text-[13px] italic text-muted-foreground">
@@ -98,7 +98,7 @@ export function PeerFeedbackCard({
           ) : null}
           {hasBody ? (
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Feedback
               </p>
               <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-foreground/90">

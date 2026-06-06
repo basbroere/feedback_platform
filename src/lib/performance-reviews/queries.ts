@@ -21,10 +21,10 @@ const PERSON_COLS = "id, name, avatar_url";
 const TEMPLATE_COLS = "id, name, questions";
 
 const SAFE_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, shared_summary";
+  "id, manager_id, employee_id, template_id, status, subject, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, shared_summary";
 
 const FULL_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
+  "id, manager_id, employee_id, template_id, status, subject, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
 
 const SIX_MONTHS_DAYS = 182;
 
@@ -34,6 +34,7 @@ type RawPerformanceReviewRow = {
   employee_id: string;
   template_id: string | null;
   status: PerformanceReviewStatus;
+  subject: string | null;
   cycle_started_at: string;
   completed_at: string | null;
   scheduled_at: string | null;
@@ -53,6 +54,7 @@ function mapFull(row: RawPerformanceReviewRow): PerformanceReviewFull {
     employee_id: row.employee_id,
     template_id: row.template_id,
     status: row.status,
+    subject: row.subject ?? null,
     cycle_started_at: row.cycle_started_at,
     completed_at: row.completed_at,
     scheduled_at: row.scheduled_at ?? null,
@@ -127,7 +129,6 @@ type RawListRow = {
   completed_at: string | null;
   scheduled_at: string | null;
   employee_self_evaluation: Record<string, string> | null;
-  manager_preparation: Record<string, string> | null;
   template: { name: string } | null;
   employee: PersonRef | null;
   manager: PersonRef | null;
@@ -150,10 +151,6 @@ function mapListRow(
       Object.values(row.employee_self_evaluation ?? {}).some(
         (v) => typeof v === "string" && v.trim().length > 0,
       ) ?? false,
-    has_manager_input:
-      Object.values(row.manager_preparation ?? {}).some(
-        (v) => typeof v === "string" && v.trim().length > 0,
-      ) ?? false,
     has_peer_submitted: stats?.has_peer_submitted ?? false,
     has_manager_submitted: stats?.has_manager_submitted ?? false,
     employee: row.employee,
@@ -161,7 +158,7 @@ function mapListRow(
   };
 }
 
-const LIST_COLS = `id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
+const LIST_COLS = `id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
 
 async function batchFeedbackStats(
   supabase: Awaited<ReturnType<typeof createClient>>,

@@ -54,7 +54,7 @@ export function PreparationForm({
         setSaved(true);
         router.push(redirectTo);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Opslaan mislukt");
+        setError(e instanceof Error ? e.message : "Save failed");
       }
     });
   }
@@ -95,7 +95,7 @@ export function PreparationForm({
                   rows={3}
                   value={answers[q.id] ?? ""}
                   onChange={(e) => updateAnswer(q.id, e.target.value)}
-                  placeholder="Wat wil je hierover delen?"
+                  placeholder="What would you like to share?"
                 />
               </div>
             ))}
@@ -109,10 +109,10 @@ export function PreparationForm({
 
       <div className="flex items-center gap-3">
         <Button onClick={submit} disabled={isPending}>
-          {isPending ? "Bezig..." : "Opslaan"}
+          {isPending ? "Saving..." : "Save"}
         </Button>
         {saved ? (
-          <span className="text-sm text-muted-foreground">Opgeslagen.</span>
+          <span className="text-sm text-muted-foreground">Saved.</span>
         ) : null}
         {error ? <span className="text-sm text-destructive">{error}</span> : null}
       </div>

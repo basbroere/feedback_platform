@@ -1,21 +1,31 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, CircleCheck, ClipboardCheck } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ClipboardCheck,
+  MessageSquareText,
+} from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  getActiveActionItemsForEmployeeWithManager,
   getTeamMembers,
   listOneOnOnesForPair,
 } from "@/lib/one-on-ones/queries";
-import { HistoryTable } from "@/components/one-on-one/history-table";
-import { ActionItemList } from "@/components/one-on-one/action-item-list";
-import { ScheduleDialog } from "@/components/one-on-one/schedule-dialog";
+import { getDossierForEmployee } from "@/lib/action-items/queries";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { ScheduleDialog } from "@/components/one-on-one/schedule-dialog";
 import { listActivePerformanceReviewTemplates } from "@/lib/performance-reviews/template";
 import { StartPerformanceReviewDialog } from "@/components/performance-review/start-dialog";
 import { listPerformanceReviewsBetween } from "@/lib/performance-reviews/queries";
-import { formatDate } from "@/lib/format";
+import { getFeedbackForEmployee } from "@/lib/feedback/queries";
+import { MemberHistoryTable } from "@/components/team/member-history-table";
+import { MemberFeedbackTable } from "@/components/team/member-feedback-table";
+import { MemberActionItemsSection } from "@/components/team/member-action-items-section";
+import { buttonVariants } from "@/components/ui/button";
+import { TONE_BG, type Tone } from "@/lib/ui/tone";
+import { formatDate, formatDateTime, formatRelativeWeeks } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export default async function TeamMemberPage({
   params,
@@ -29,8 +39,6 @@ export default async function TeamMemberPage({
   const members = await getTeamMembers(persona.id);
   const member = members.find((m) => m.id === employeeId);
   if (!member) {
-    // Probeer fallback: misschien is het iemand uit een ander team.
-    // Voor demo: simpel 404.
     const supabase = await createClient();
     const { data: lookup } = await supabase
       .from("users")
@@ -41,20 +49,34 @@ export default async function TeamMemberPage({
     redirect("/team");
   }
 
-  const [items, actionItems, performanceReviews, prTemplates] =
-    await Promise.all([
-      listOneOnOnesForPair(persona.id, employeeId),
-      getActiveActionItemsForEmployeeWithManager(employeeId, persona.id),
-      listPerformanceReviewsBetween(persona.id, employeeId),
-      listActivePerformanceReviewTemplates(),
-    ]);
-  const openActionItems = actionItems.filter((i) => i.status === "open");
+  const [
+    oneOnOnes,
+    dossier,
+    performanceReviews,
+    prTemplates,
+    feedbackItems,
+  ] = await Promise.all([
+    listOneOnOnesForPair(persona.id, employeeId),
+    getDossierForEmployee(employeeId),
+    listPerformanceReviewsBetween(persona.id, employeeId),
+    listActivePerformanceReviewTemplates(),
+    getFeedbackForEmployee(employeeId),
+  ]);
+
   const openPerformanceReview = performanceReviews.find(
     (r) => r.status !== "completed" && r.status !== "cancelled",
   );
-  const completedPerformanceReviews = performanceReviews.filter(
-    (r) => r.status === "completed",
-  );
+
+  const nowIso = nowIsoString();
+  const upcomingOneOnOne =
+    oneOnOnes
+      .filter(
+        (it) =>
+          !it.completed_at && it.scheduled_at && it.scheduled_at >= nowIso,
+      )
+      .sort((a, b) =>
+        (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? ""),
+      )[0] ?? null;
 
   return (
     <div className="space-y-8">
@@ -64,7 +86,7 @@ export default async function TeamMemberPage({
           className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          Terug naar team
+          Terug naar dossiers
         </Link>
       </div>
 
@@ -76,12 +98,12 @@ export default async function TeamMemberPage({
             avatarUrl={member.avatar_url}
             size="lg"
           />
-          <div>
+          <div className="min-w-0">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
               {member.name}
             </h1>
-            <p className="text-[14px] text-muted-foreground">
-              1-op-1&apos;s tussen jullie
+            <p className="text-[13.5px] text-muted-foreground">
+              {member.email}
             </p>
           </div>
         </div>
@@ -104,89 +126,180 @@ export default async function TeamMemberPage({
         </div>
       </header>
 
-      {openPerformanceReview ? (
-        <Link
-          href={`/functioneringsgesprek/${openPerformanceReview.id}`}
-          className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10"
-        >
-          <ClipboardCheck className="h-5 w-5 text-primary" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium leading-tight">
-              Lopend functioneringsgesprek
-            </p>
-            <p className="text-[12.5px] text-muted-foreground">
-              {openPerformanceReview.template_name ?? "Functioneringsgesprek"}{" "}
-              · gestart op {formatDate(openPerformanceReview.cycle_started_at)}{" "}
-              · zelfevaluatie{" "}
-              {openPerformanceReview.has_employee_input
-                ? "ingevuld"
-                : "nog leeg"}
-            </p>
-          </div>
-          <span className="text-[12.5px] font-medium text-primary">
-            Open gesprek
-          </span>
-        </Link>
-      ) : null}
+      <UpcomingSection
+        upcomingOneOnOne={upcomingOneOnOne}
+        openPerformanceReview={openPerformanceReview ?? null}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="space-y-3">
-          <h2 className="text-[15px] font-semibold tracking-tight">
-            1-op-1&apos;s
-          </h2>
-          <HistoryTable
-            items={items}
-            emptyLabel="Plan jullie eerste 1-op-1 in."
-          />
-          {completedPerformanceReviews.length > 0 ? (
-            <div className="space-y-2 pt-4">
-              <h3 className="text-[13px] font-semibold tracking-tight text-foreground/80">
-                Afgeronde functioneringsgesprekken
-              </h3>
-              <ul className="space-y-2">
-                {completedPerformanceReviews.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={`/functioneringsgesprek/${r.id}`}
-                      className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
-                    >
-                      <CircleCheck className="h-4 w-4 text-emerald-500" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-medium">
-                          {r.template_name ?? "Functioneringsgesprek"}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">
-                          Afgerond op{" "}
-                          {r.completed_at
-                            ? formatDate(r.completed_at)
-                            : formatDate(r.cycle_started_at)}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </section>
+        <div className="min-w-0 space-y-8">
+          <section className="space-y-3">
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              Gespreksgeschiedenis
+            </h2>
+            <MemberHistoryTable
+              oneOnOnes={oneOnOnes.filter((o) => Boolean(o.completed_at))}
+              performanceReviews={performanceReviews.filter(
+                (r) => r.status === "completed",
+              )}
+            />
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              Feedback over {firstName(member.name)}
+            </h2>
+            <MemberFeedbackTable items={feedbackItems} />
+          </section>
+        </div>
 
         <aside className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-[15px] font-semibold tracking-tight">
-              Open actiepunten
+              Actiepunten
             </h2>
-            {openActionItems.length > 0 ? (
-              <span className="text-[12.5px] text-muted-foreground">
-                {openActionItems.length}
-              </span>
-            ) : null}
           </div>
-          <ActionItemList
-            items={openActionItems}
-            emptyLabel="Geen open actiepunten uit jullie 1-op-1's."
+          <MemberActionItemsSection
+            open={dossier.open}
+            completed={dossier.completed}
           />
         </aside>
       </div>
     </div>
   );
+}
+
+function UpcomingSection({
+  upcomingOneOnOne,
+  openPerformanceReview,
+}: {
+  upcomingOneOnOne: {
+    id: string;
+    subject: string;
+    scheduled_at: string | null;
+    shared_summary: string | null;
+  } | null;
+  openPerformanceReview: {
+    id: string;
+    template_name: string | null;
+    cycle_started_at: string;
+    has_employee_input: boolean;
+  } | null;
+}) {
+  const cards = [upcomingOneOnOne, openPerformanceReview].filter(Boolean);
+  const hasAny = cards.length > 0;
+  const isSingle = cards.length === 1;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[12.5px] font-medium font-heading uppercase tracking-wider text-muted-foreground">
+        Opkomend
+      </h2>
+      {hasAny ? (
+        <div
+          className={cn(
+            "grid gap-3",
+            isSingle ? "grid-cols-1" : "md:grid-cols-2",
+          )}
+        >
+          {upcomingOneOnOne ? (
+            <UpcomingCard
+              href={`/een-op-een/${upcomingOneOnOne.id}`}
+              icon={MessageSquareText}
+              tone="blue"
+              title={upcomingOneOnOne.subject || "1-op-1"}
+              meta={
+                upcomingOneOnOne.scheduled_at
+                  ? formatDateTime(upcomingOneOnOne.scheduled_at)
+                  : "Datum nog niet gepland"
+              }
+              caption={`Over ${formatRelativeWeeks(upcomingOneOnOne.scheduled_at)}`}
+              cta="Open gesprek"
+            />
+          ) : null}
+          {openPerformanceReview ? (
+            <UpcomingCard
+              href={`/functioneringsgesprek/${openPerformanceReview.id}`}
+              icon={ClipboardCheck}
+              tone="amber"
+              title={
+                openPerformanceReview.template_name ?? "Functioneringsgesprek"
+              }
+              meta={`Gestart op ${formatDate(openPerformanceReview.cycle_started_at)}`}
+              caption={
+                openPerformanceReview.has_employee_input
+                  ? "Zelfevaluatie ingevuld"
+                  : "Zelfevaluatie nog leeg"
+              }
+              cta="Open cyclus"
+            />
+          ) : null}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Geen opkomende gesprekken. Plan er eentje in via de knop boven.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UpcomingCard({
+  href,
+  icon: Icon,
+  tone,
+  title,
+  meta,
+  caption,
+  cta,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  tone: Tone;
+  title: string;
+  meta: string;
+  caption: string;
+  cta: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-accent/30"
+    >
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+          TONE_BG[tone],
+        )}
+      >
+        <Icon className="h-4.5 w-4.5" strokeWidth={1.75} />
+      </span>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="truncate text-[14.5px] font-semibold leading-tight">
+          {title}
+        </p>
+        <p className="text-[12.5px] text-muted-foreground">{meta}</p>
+        <p className="text-[11.5px] text-muted-foreground/80">{caption}</p>
+      </div>
+      <span
+        className={cn(
+          buttonVariants({ size: "sm", variant: "ghost" }),
+          "shrink-0",
+        )}
+      >
+        {cta}
+        <ArrowRight className="h-3.5 w-3.5" data-icon="inline-end" />
+      </span>
+    </Link>
+  );
+}
+
+function firstName(full: string): string {
+  return full.split(" ")[0] ?? full;
+}
+
+function nowIsoString(): string {
+  return new Date().toISOString();
 }
