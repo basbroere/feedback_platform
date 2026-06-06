@@ -5,7 +5,8 @@ export type TemplateType =
   | "performance_review"
   | "evaluation"
   | "peer_360"
-  | "peer_feedback";
+  | "peer_feedback"
+  | "upward_feedback";
 
 export type ManagedTemplate = {
   id: string;
@@ -22,4 +23,5 @@ export const TEMPLATE_TYPE_LABEL: Record<TemplateType, string> = {
   evaluation: "Beoordelingsgesprek",
   peer_360: "Functioneringsgesprek 360",
   peer_feedback: "Losse peer feedback",
+  upward_feedback: "Upward feedback",
 };

@@ -82,6 +82,7 @@ export default async function UitDienstDossierPage({
     dossier;
 
   const orphanActionItems = actionItems.filter((i) => {
+    if (i.source_type === "personal") return true;
     if (i.source_type === "one_on_one") {
       return !oneOnOnes.some((o) => o.id === i.source_id);
     }
@@ -290,7 +291,9 @@ export default async function UitDienstDossierPage({
                         ? "Uit 1-op-1"
                         : item.source_type === "performance_review"
                           ? "Uit functioneringsgesprek"
-                          : "Uit beoordelingsgesprek"}
+                          : item.source_type === "evaluation"
+                            ? "Uit beoordelingsgesprek"
+                            : "Persoonlijk"}
                       {item.target_date
                         ? ` · richtdatum ${formatDate(item.target_date)}`
                         : ""}

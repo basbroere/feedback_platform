@@ -82,7 +82,12 @@ type Question = {
 };
 
 type SeedTemplate = {
-  type: "one_on_one" | "performance_review" | "evaluation" | "peer_360";
+  type:
+    | "one_on_one"
+    | "performance_review"
+    | "evaluation"
+    | "peer_360"
+    | "upward_feedback";
   name: string;
   questions: Question[];
 };
@@ -219,6 +224,40 @@ const TEMPLATES: SeedTemplate[] = [
         label: "Wat zou de samenwerking nog beter maken?",
         kind: "open",
         hint: "Iets praktisch dat jullie vaker of anders zouden kunnen doen.",
+      },
+    ],
+  },
+  {
+    type: "upward_feedback",
+    name: "Feedback aan je manager",
+    questions: [
+      {
+        id: "waardering",
+        label: "Wat waardeer je in de samenwerking met je manager?",
+        kind: "open",
+        hint: "Iets concreets dat goed gaat. Een voorbeeld helpt het te laten landen.",
+      },
+      {
+        id: "groei",
+        label: "Waar zou je manager in jouw ogen het meest in kunnen groeien?",
+        kind: "open",
+        hint: "Eén punt is genoeg. Beschrijf wat je ziet en wat het effect op jou is.",
+      },
+      {
+        id: "meer",
+        label: "Wat zou je willen dat je manager meer doet?",
+        kind: "open",
+      },
+      {
+        id: "minder",
+        label: "Wat zou je willen dat je manager minder doet?",
+        kind: "open",
+      },
+      {
+        id: "vrij",
+        label: "Iets anders dat je wil meegeven?",
+        kind: "open",
+        hint: "Een compliment, observatie of vraag die buiten de andere punten valt.",
       },
     ],
   },

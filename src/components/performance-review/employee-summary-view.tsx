@@ -27,6 +27,7 @@ import type { FeedbackWithSource } from "@/lib/feedback/types";
 import { ActionItemList } from "@/components/one-on-one/action-item-list";
 import { FeedbackRow } from "@/components/feedback/feedback-view";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { cn } from "@/lib/utils";
 import { TemplateAnswers } from "./template-answers";
 
@@ -196,7 +197,14 @@ export function PerformanceReviewEmployeeSummaryView({
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <CardTitle>Dossier afgelopen half jaar</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              Dossier afgelopen half jaar
+              <InfoTooltip label="Uitleg dossier">
+                We tonen alles uit de zes maanden voor de start van deze cyclus,
+                zodat jij en je manager met dezelfde context het gesprek
+                ingaan.
+              </InfoTooltip>
+            </CardTitle>
             <span className="text-[12px] text-muted-foreground">
               {formatDate(windowStart)} tot {formatDate(windowEnd)}
             </span>
@@ -204,7 +212,7 @@ export function PerformanceReviewEmployeeSummaryView({
         </CardHeader>
         <CardContent className="space-y-6">
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Voltooide actiepunten ({dossierActionItems.length})
             </h3>
             {dossierActionItems.length === 0 ? (
@@ -250,7 +258,7 @@ export function PerformanceReviewEmployeeSummaryView({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="font-heading text-[14px] font-medium text-muted-foreground">
               Ontvangen feedback ({dossierFeedback.length})
             </h3>
             {dossierFeedback.length === 0 ? (
@@ -295,6 +303,7 @@ function CycleStatusGridForEmployee({
       <StatusCard
         icon={<Users className="h-4 w-4" />}
         title="Peer-feedback"
+        info="De inhoud van de peer-feedback lees je samen met de manager-feedback, nadat het gesprek is afgerond. Zo blijft je eigen zelfreflectie bias-vrij."
         status={
           peer
             ? peer.status === "submitted"
@@ -317,6 +326,7 @@ function CycleStatusGridForEmployee({
       <StatusCard
         icon={<MessageSquareText className="h-4 w-4" />}
         title="Feedback van je manager"
+        info={`Wat ${managerFirst} schrijft lees je samen met de peer-feedback nadat het gesprek is afgerond.`}
         status={
           manager && manager.status === "submitted" ? "done" : "waiting"
         }
@@ -335,11 +345,13 @@ function StatusCard({
   title,
   status,
   line,
+  info,
 }: {
   icon: React.ReactNode;
   title: string;
   status: "done" | "waiting" | "empty" | "skipped";
   line: string;
+  info?: string;
 }) {
   const palette = {
     done: "border-emerald-200 bg-emerald-50/60 text-emerald-700",
@@ -356,9 +368,12 @@ function StatusCard({
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="flex items-center gap-1.5 font-heading text-[13.5px] font-semibold text-muted-foreground">
           {icon}
           {title}
+          {info ? (
+            <InfoTooltip label={`Uitleg ${title}`}>{info}</InfoTooltip>
+          ) : null}
         </p>
         <span
           className={cn(

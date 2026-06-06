@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock3, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import {
   chooseCyclePeer,
@@ -89,47 +88,34 @@ export function CyclePeerPicker({
     : null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-500" />
-            Kies een collega voor 360 feedback
-          </CardTitle>
-          <p className="text-[13px] text-muted-foreground">
-            Eén collega die jou de afgelopen periode goed heeft zien werken.
-            Je naam en die van je collega zijn straks zichtbaar.
-          </p>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {peer ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <PersonAvatar
-                id={peer.author.id}
-                name={peer.author.name}
-                avatarUrl={peer.author.avatar_url}
-                size="sm"
-              />
-              <div className="space-y-0.5">
-                <p className="text-[14px] font-medium leading-tight">
-                  {peer.author.name}
-                </p>
-                <PeerStatusLine status={peerStatus} />
-              </div>
+    <div className="space-y-3">
+      {peer ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3">
+            <PersonAvatar
+              id={peer.author.id}
+              name={peer.author.name}
+              avatarUrl={peer.author.avatar_url}
+              size="sm"
+            />
+            <div className="space-y-0.5">
+              <p className="text-[13.5px] font-medium leading-tight">
+                Peer voor je 360: {peer.author.name}
+              </p>
+              <PeerStatusLine status={peerStatus} />
             </div>
-            {peerStatus === "requested" ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setOpen((p) => !p)}
-                  disabled={isPending}
-                >
-                  Wissel collega
-                </Button>
+          </div>
+          {peerStatus !== "submitted" ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen((p) => !p)}
+                disabled={isPending}
+              >
+                Wissel
+              </Button>
+              {peerStatus === "requested" ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -139,60 +125,70 @@ export function CyclePeerPicker({
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen((p) => !p)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-card/40 px-4 py-4 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-          >
-            <Users className="h-3.5 w-3.5" />
-            Kies een collega
-          </button>
-        )}
-
-        {open ? (
-          <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Zoek op naam"
-              className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
-            />
-
-            <div className="max-h-80 space-y-3 overflow-y-auto">
-              {ownTeam ? (
-                <TeamGroup
-                  team={ownTeam}
-                  label="Je eigen team"
-                  filter={filter}
-                  isSelectable={isSelectable}
-                  onPick={pick}
-                  disabled={isPending}
-                />
               ) : null}
-              {otherTeams.map((t) => (
-                <TeamGroup
-                  key={t.id}
-                  team={t}
-                  label={t.name}
-                  filter={filter}
-                  isSelectable={isSelectable}
-                  onPick={pick}
-                  disabled={isPending}
-                  hint="cross-team"
-                />
-              ))}
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((p) => !p)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-card/40 px-4 py-3 text-left transition-colors hover:bg-accent outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+        >
+          <span className="flex items-center gap-2.5">
+            <Users className="h-4 w-4 text-blue-500" />
+            <span className="space-y-0.5">
+              <span className="block text-[13.5px] font-medium text-foreground">
+                Kies de collega die jouw 360-feedback geeft
+              </span>
+              <span className="block text-[12px] text-muted-foreground">
+                Eén collega die jou de afgelopen periode goed heeft zien werken
+              </span>
+            </span>
+          </span>
+          <span className="text-[12px] text-muted-foreground">Kiezen</span>
+        </button>
+      )}
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      </CardContent>
-    </Card>
+      {open ? (
+        <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Zoek op naam"
+            className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+          />
+
+          <div className="max-h-80 space-y-3 overflow-y-auto">
+            {ownTeam ? (
+              <TeamGroup
+                team={ownTeam}
+                label="Je eigen team"
+                filter={filter}
+                isSelectable={isSelectable}
+                onPick={pick}
+                disabled={isPending}
+              />
+            ) : null}
+            {otherTeams.map((t) => (
+              <TeamGroup
+                key={t.id}
+                team={t}
+                label={t.name}
+                filter={filter}
+                isSelectable={isSelectable}
+                onPick={pick}
+                disabled={isPending}
+                hint="cross-team"
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+    </div>
   );
 }
 
@@ -248,11 +244,11 @@ function TeamGroup({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
           {label}
         </p>
         {hint ? (
-          <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+          <span className="text-[11.5px] font-medium font-heading text-muted-foreground/70">
             {hint}
           </span>
         ) : null}

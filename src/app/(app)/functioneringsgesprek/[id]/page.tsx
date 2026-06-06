@@ -11,6 +11,7 @@ import {
   getPerformanceReviewForManager,
 } from "@/lib/performance-reviews/queries";
 import { getTemplateById } from "@/lib/one-on-ones/template";
+import { getDefaultUpwardFeedbackTemplate } from "@/lib/performance-reviews/template";
 import { PerformanceReviewMeetingView } from "@/components/performance-review/meeting-view";
 import { PerformanceReviewEmployeeSummaryView } from "@/components/performance-review/employee-summary-view";
 import { ManagerPreparationView } from "@/components/performance-review/manager-preparation-view";
@@ -35,12 +36,14 @@ export default async function PerformanceReviewDetail({
     const status = managerView.status;
 
     if (status === "completed") {
-      const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
-        getActiveActionItemsForPerformanceReview(managerView.id),
-        getPerformanceReviewDossier(managerView.id),
-        getDossierFeedback(managerView.id),
-        getCycleInputs(managerView.id),
-      ]);
+      const [newItems, dossier, feedback, cycleInputs, upwardTemplate] =
+        await Promise.all([
+          getActiveActionItemsForPerformanceReview(managerView.id),
+          getPerformanceReviewDossier(managerView.id),
+          getDossierFeedback(managerView.id),
+          getCycleInputs(managerView.id),
+          getDefaultUpwardFeedbackTemplate(),
+        ]);
       return (
         <div className="space-y-6">
           <Link
@@ -53,6 +56,7 @@ export default async function PerformanceReviewDetail({
           <PerformanceReviewMeetingView
             review={managerView}
             questions={questions}
+            upwardQuestions={upwardTemplate?.questions ?? []}
             cycleInputs={cycleInputs}
             newActionItems={newItems}
             dossierActionItems={dossier?.completedActionItems ?? []}

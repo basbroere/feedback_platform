@@ -110,6 +110,8 @@ export async function saveEmployeeSelfEvaluation(input: {
     .eq("id", input.performanceReviewId);
   if (updErr) throw new Error(updErr.message);
 
+  await maybeAdvanceCycleFromDraft(supabase, input.performanceReviewId);
+
   revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
   revalidatePath(
     `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
@@ -118,52 +120,41 @@ export async function saveEmployeeSelfEvaluation(input: {
   revalidatePath("/dashboard");
 }
 
-// Medewerker rondt voorbereiding af: zelfreflectie ingevuld én peer gekozen.
-// Zet status van 'draft' naar 'collecting_input'.
-export async function finalizeEmployeePreparation(input: {
-  performanceReviewId: string;
-}): Promise<void> {
-  const employeeId = await requirePersonaId();
-  const supabase = await createClient();
-
-  const { data: row, error: rowErr } = await supabase
+// Interne helper: zet status van 'draft' op 'collecting_input' zodra
+// zelfreflectie ≥ 1 antwoord heeft EN peer gekozen is. Geruisloos: geen errors.
+async function maybeAdvanceCycleFromDraft(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  prId: string,
+): Promise<void> {
+  const { data: pr } = await supabase
     .from("performance_reviews")
-    .select("id, employee_id, status, employee_self_evaluation, completed_at")
-    .eq("id", input.performanceReviewId)
+    .select("status, employee_self_evaluation, manager_id, employee_id")
+    .eq("id", prId)
     .maybeSingle();
-  if (rowErr || !row) throw new Error("Functioneringsgesprek niet gevonden");
-  if (row.employee_id !== employeeId) throw new Error("Niet jouw functioneringsgesprek");
-  if (row.completed_at) throw new Error("Dit functioneringsgesprek is al afgerond");
-  if (row.status === "ready_for_meeting" || row.status === "completed" || row.status === "cancelled") return;
+  if (!pr) return;
+  if (pr.status !== "draft") return;
 
-  const hasEval = Object.values(row.employee_self_evaluation ?? {}).some(
+  const hasEval = Object.values(pr.employee_self_evaluation ?? {}).some(
     (v) => typeof v === "string" && (v as string).trim().length > 0,
   );
-  if (!hasEval) throw new Error("Vul eerst je zelfreflectie in");
+  if (!hasEval) return;
 
   const { data: peerRow } = await supabase
     .from("feedback")
     .select("id")
     .eq("source_type", "performance_review")
-    .eq("source_id", input.performanceReviewId)
-    .neq("author_id", row.employee_id)
+    .eq("source_id", prId)
+    .neq("author_id", pr.manager_id)
+    .neq("author_id", pr.employee_id)
     .in("status", ["requested", "submitted"])
     .limit(1)
     .maybeSingle();
-  if (!peerRow) throw new Error("Kies eerst een peer-reviewer");
+  if (!peerRow) return;
 
-  const nextStatus: "scheduled" | "collecting_input" =
-    row.status === "scheduled" ? "scheduled" : "collecting_input";
-  const { error: updErr } = await supabase
+  await supabase
     .from("performance_reviews")
-    .update({ status: nextStatus })
-    .eq("id", input.performanceReviewId);
-  if (updErr) throw new Error(updErr.message);
-
-  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
-  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`);
-  revalidatePath("/functioneringsgesprek");
-  revalidatePath("/dashboard");
+    .update({ status: "collecting_input" as const })
+    .eq("id", prId);
 }
 
 export async function saveManagerPerformanceReviewMeeting(input: {
@@ -206,6 +197,25 @@ export async function saveManagerPerformanceReviewMeeting(input: {
     .update(patch)
     .eq("id", input.performanceReviewId);
   if (updErr) throw new Error(updErr.message);
+
+  // Bij afronding: upward feedback (medewerker -> manager) wordt nu pas
+  // zichtbaar voor de manager. Promoot eventuele concept-rij naar 'submitted'.
+  if (input.complete) {
+    const now = new Date().toISOString();
+    const { data: upwardRow } = await supabase
+      .from("feedback")
+      .select("id, status")
+      .eq("source_type", "upward_feedback")
+      .eq("source_id", input.performanceReviewId)
+      .eq("author_id", row.employee_id)
+      .maybeSingle();
+    if (upwardRow?.id && upwardRow.status === "requested") {
+      await supabase
+        .from("feedback")
+        .update({ status: "submitted", submitted_at: now })
+        .eq("id", upwardRow.id);
+    }
+  }
 
   for (const upd of input.actionItemUpdates) {
     const completedAt =
@@ -315,6 +325,8 @@ export async function chooseCyclePeer(input: {
     },
   });
 
+  await maybeAdvanceCycleFromDraft(supabase, input.performanceReviewId);
+
   revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
   revalidatePath(
     `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
@@ -362,6 +374,92 @@ export async function removeCyclePeer(input: {
   revalidatePath(
     `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
   );
+}
+
+// Medewerker schrijft upward feedback over zijn manager. Optioneel onderdeel
+// van de voorbereiding. Status blijft 'requested' tot de cyclus is afgerond;
+// dan promoot saveManagerPerformanceReviewMeeting (met complete=true) deze
+// rij naar 'submitted' zodat de manager hem te zien krijgt. Zo blijft de
+// inhoud verborgen tot afronding.
+export async function saveUpwardFeedback(input: {
+  performanceReviewId: string;
+  responses: Record<string, string>;
+}): Promise<{ feedbackId: string | null }> {
+  const employeeId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.employee_id !== employeeId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Dit functioneringsgesprek is al afgerond");
+
+  const cleaned: Record<string, string> = {};
+  for (const [k, v] of Object.entries(input.responses ?? {})) {
+    if (typeof v === "string" && v.trim().length > 0) {
+      cleaned[k] = v.trim();
+    }
+  }
+
+  const { data: existing } = await supabase
+    .from("feedback")
+    .select("id")
+    .eq("source_type", "upward_feedback")
+    .eq("source_id", input.performanceReviewId)
+    .eq("author_id", employeeId)
+    .maybeSingle();
+
+  // Lege inzending: verwijder een bestaande concept-rij zodat de statuskaart
+  // weer op 'nog niet ingevuld' staat.
+  if (Object.keys(cleaned).length === 0) {
+    if (existing?.id) {
+      await supabase.from("feedback").delete().eq("id", existing.id);
+    }
+    revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+    revalidatePath(
+      `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+    );
+    return { feedbackId: null };
+  }
+
+  const now = new Date().toISOString();
+  let feedbackId: string;
+
+  if (existing?.id) {
+    const { error: updErr } = await supabase
+      .from("feedback")
+      .update({ responses: cleaned })
+      .eq("id", existing.id);
+    if (updErr) throw new Error(updErr.message);
+    feedbackId = existing.id;
+  } else {
+    const { data, error } = await supabase
+      .from("feedback")
+      .insert({
+        recipient_id: pr.manager_id,
+        author_id: employeeId,
+        source_type: "upward_feedback" as const,
+        source_id: input.performanceReviewId,
+        responses: cleaned,
+        status: "requested" as const,
+        requested_at: now,
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error(error?.message ?? "Opslaan mislukt");
+    feedbackId = data.id;
+  }
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(
+    `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+  );
+  return { feedbackId };
 }
 
 // Manager vult zelf het 360-template in en bewaart of submit het direct.
@@ -504,6 +602,41 @@ async function maybeAdvanceToReadyForMeeting(
   }
 }
 
+// Manager besluit het gesprek nu te starten, ook al is nog niet alle input
+// binnen. Forceert de cyclus naar 'ready_for_meeting' zodat de gespreks-UI
+// beschikbaar wordt. Bedoeld voor situaties waar wachten op de laatste peer
+// of upward feedback geen nut meer heeft.
+export async function forceStartPerformanceReviewMeeting(input: {
+  performanceReviewId: string;
+}): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, status, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at) throw new Error("Dit gesprek is al afgerond");
+  if (pr.status === "cancelled") throw new Error("Dit gesprek is geannuleerd");
+  if (pr.status === "ready_for_meeting" || pr.status === "completed") {
+    return;
+  }
+
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update({ status: "ready_for_meeting" as const })
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
+}
+
 // Manager plant een datum voor het gesprek. Vereist status 'ready_for_meeting'.
 export async function schedulePerformanceReviewMeeting(input: {
   performanceReviewId: string;
@@ -538,6 +671,131 @@ export async function schedulePerformanceReviewMeeting(input: {
       scheduled_at: date.toISOString(),
     },
   });
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
+}
+
+// Manager verplaatst een (al ingeplande of nog niet ingeplande) cyclus naar een
+// nieuwe datum. Werkt voor elke status behalve completed; bij draft/collecting
+// blijft de status zoals hij is en wordt alleen scheduled_at gezet.
+export async function reschedulePerformanceReview(input: {
+  performanceReviewId: string;
+  scheduledAt: string;
+}): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, status, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Een afgerond gesprek kun je niet verplaatsen");
+
+  const date = new Date(input.scheduledAt);
+  if (isNaN(date.getTime())) throw new Error("Ongeldige datum");
+
+  const patch: Record<string, unknown> = {
+    scheduled_at: date.toISOString(),
+  };
+  if (pr.status === "ready_for_meeting") {
+    patch.status = "scheduled" as const;
+  }
+
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update(patch)
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(`/team/${pr.employee_id}`);
+  revalidatePath("/team");
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
+}
+
+// Manager verwijdert een functioneringsgesprek-cyclus volledig. Toegestaan in
+// elke status behalve completed. Bijbehorende peer-feedback, upward feedback en
+// nog open actiepunten worden opgeruimd.
+export async function deletePerformanceReview(
+  performanceReviewId: string,
+): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Een afgerond gesprek kun je niet verwijderen");
+
+  const { error: aiErr } = await supabase
+    .from("action_items")
+    .delete()
+    .eq("source_type", "performance_review")
+    .eq("source_id", performanceReviewId);
+  if (aiErr) throw new Error(aiErr.message);
+
+  const { error: fbErr } = await supabase
+    .from("feedback")
+    .delete()
+    .in("source_type", ["performance_review", "upward_feedback"])
+    .eq("source_id", performanceReviewId);
+  if (fbErr) throw new Error(fbErr.message);
+
+  const { error: delErr } = await supabase
+    .from("performance_reviews")
+    .delete()
+    .eq("id", performanceReviewId);
+  if (delErr) throw new Error(delErr.message);
+
+  revalidatePath(`/team/${pr.employee_id}`);
+  revalidatePath("/team");
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
+  revalidatePath("/actiepunten");
+}
+
+// Manager geeft de cyclus een eigen titel ("H1 2026 evaluatie"). Leeg veld
+// betekent terug naar de standaardweergave.
+export async function updatePerformanceReviewSubject(input: {
+  performanceReviewId: string;
+  subject: string;
+}): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Een afgerond gesprek kun je niet meer hernoemen");
+
+  const trimmed = input.subject.trim();
+  const next = trimmed.length === 0 ? null : trimmed.slice(0, 120);
+
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update({ subject: next })
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
 
   revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
   revalidatePath("/functioneringsgesprek");

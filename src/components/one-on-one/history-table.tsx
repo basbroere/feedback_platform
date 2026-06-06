@@ -24,13 +24,13 @@ export function HistoryTable({
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
-            <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+            <th className="px-6 py-3 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
               Datum
             </th>
-            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+            <th className="px-4 py-3 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
               Onderwerp
             </th>
-            <th className="hidden sm:table-cell px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+            <th className="hidden sm:table-cell px-4 py-3 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
               Status
             </th>
             <th className="px-6 py-3" />

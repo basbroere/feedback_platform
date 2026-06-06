@@ -20,6 +20,7 @@ const TYPE_ACCENT: Record<TemplateType, string> = {
   evaluation: "bg-amber-400",
   peer_360: "bg-emerald-500",
   peer_feedback: "bg-violet-500",
+  upward_feedback: "bg-teal-500",
 };
 
 const TYPE_COLOR: Record<TemplateType, string> = {
@@ -33,6 +34,8 @@ const TYPE_COLOR: Record<TemplateType, string> = {
     "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800",
   peer_feedback:
     "bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:ring-violet-800",
+  upward_feedback:
+    "bg-teal-50 text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800",
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -144,7 +147,7 @@ function TemplateTable({
     <div className="overflow-x-auto">
       <table className="w-full text-left">
         <thead>
-          <tr className="border-b border-border/70 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <tr className="border-b border-border/70 text-[12.5px] font-medium font-heading text-muted-foreground">
             <th className="pb-2.5 pr-4 font-medium">Naam</th>
             <th className="pb-2.5 pr-4 font-medium">Categorie</th>
             <th className="pb-2.5 pr-4 font-medium">Vragen</th>
@@ -285,7 +288,7 @@ export function TemplatesTable({ templates }: { templates: ManagedTemplate[] }) 
     <>
       <div className="space-y-8">
         <section>
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <h3 className="mb-3 text-[12.5px] font-medium font-heading text-muted-foreground">
             Actief
             <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
               {active.length}
@@ -306,7 +309,7 @@ export function TemplatesTable({ templates }: { templates: ManagedTemplate[] }) 
 
         {archived.length > 0 && (
           <section>
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h3 className="mb-3 text-[12.5px] font-medium font-heading text-muted-foreground">
               Gearchiveerd
               <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
                 {archived.length}

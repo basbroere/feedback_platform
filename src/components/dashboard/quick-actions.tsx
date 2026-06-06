@@ -16,7 +16,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
   if (actions.length === 0) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
         Snelkoppelingen
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

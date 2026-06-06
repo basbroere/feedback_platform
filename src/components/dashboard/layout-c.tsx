@@ -183,7 +183,7 @@ function buildTaken(data: DashboardData): PlateItem[] {
 function SectionHeader({ label }: { label: string }) {
   return (
     <div className="border-t border-border bg-muted/30 px-6 py-2">
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+      <p className="text-[12px] font-medium font-heading text-muted-foreground/70">
         {label}
       </p>
     </div>
@@ -217,13 +217,13 @@ export function LayoutC({ data }: { data: DashboardData }) {
   const isManager = persona.role === "manager";
   const gesprekken = buildGesprekken(data);
   const taken = buildTaken(data);
-  const openItems = dossier.open.slice(0, 8);
+  const openItems = dossier.open.slice(0, 5);
   const hasAnything = gesprekken.length > 0 || taken.length > 0;
 
   const quickLinks = isManager
     ? [
         { href: "/een-op-een", icon: CalendarPlus, tone: "blue" as const, title: "1-op-1 gesprekken", subtitle: "Plannen en documenteren" },
-        { href: "/team", icon: UsersRound, tone: "violet" as const, title: "Team overzicht", subtitle: "Status per teamlid" },
+        { href: "/team", icon: UsersRound, tone: "violet" as const, title: "Dossiers", subtitle: "Per teamlid" },
         { href: "/functioneringsgesprek", icon: ClipboardCheck, tone: "amber" as const, title: "Functioneringsgesprekken", subtitle: "Cycli en voortgang" },
         { href: "/actiepunten", icon: CheckSquare, tone: "emerald" as const, title: "Actiepunten", subtitle: `${dossier.stats.openTotal} open` },
       ]
@@ -332,23 +332,23 @@ export function LayoutC({ data }: { data: DashboardData }) {
         <h2 className="mb-4 font-heading text-[13px] font-semibold tracking-tight text-foreground/80">
           Snelkoppelingen
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="group flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-5 shadow-sm transition-shadow hover:shadow-md"
+                className="group flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm transition-shadow hover:shadow-md"
               >
-                <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", TONE_BG[link.tone])}>
-                  <Icon className="h-6 w-6" strokeWidth={1.75} />
+                <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", TONE_BG[link.tone])}>
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold leading-tight">
+                  <p className="truncate text-[14px] font-semibold leading-tight">
                     {link.title}
                   </p>
-                  <p className="truncate text-[12.5px] text-muted-foreground mt-0.5">
+                  <p className="truncate text-[12px] text-muted-foreground">
                     {link.subtitle}
                   </p>
                 </div>

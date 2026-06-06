@@ -47,7 +47,7 @@ export function OnYourPlate({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
         Op je bord
       </h2>
 

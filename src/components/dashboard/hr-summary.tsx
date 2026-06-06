@@ -15,7 +15,7 @@ export function HrSummary({ snapshot }: { snapshot: HrSnapshot }) {
     <div className="space-y-6">
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
             Organisatie deze maand
           </h2>
           <span className="text-[12px] text-muted-foreground">
@@ -54,7 +54,7 @@ export function HrSummary({ snapshot }: { snapshot: HrSnapshot }) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
           Beheer
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">

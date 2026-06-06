@@ -43,4 +43,9 @@ next-env.d.ts
 
 # claude code
 .claude/settings.local.json
+.claude/agents/
+.claude/worktrees/
+
+# playwright mcp session artefacten
+.playwright-mcp/
 

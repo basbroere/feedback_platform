@@ -18,7 +18,7 @@ export function TeamPulse({ members }: { members: TeamMember[] }) {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
           Tijd voor een 1-op-1?
         </h2>
         <Link

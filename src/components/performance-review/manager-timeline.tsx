@@ -1,57 +1,57 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, CircleCheck } from "lucide-react";
-import type { ManagerUpcomingOneOnOne } from "@/lib/one-on-ones/queries";
-import { PersonAvatar } from "./person-avatar";
-import { formatDate, formatDateTime, formatRelativeWeeks } from "@/lib/format";
+import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { formatDate, formatRelativeWeeks } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { PerformanceReviewListItem } from "@/lib/performance-reviews/types";
 
-export function ManagerTimeline({
+export function PerformanceReviewTimeline({
   upcoming,
   recent,
 }: {
-  upcoming: ManagerUpcomingOneOnOne[];
-  recent: ManagerUpcomingOneOnOne[];
+  upcoming: PerformanceReviewListItem[];
+  recent: PerformanceReviewListItem[];
 }) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
         <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
-          Aankomend
+          Opkomend
         </h2>
         {upcoming.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              Geen openstaande 1-op-1&apos;s. Plan er een in via /team.
+              Geen lopende functioneringsgesprekken.
             </p>
           </div>
         ) : (
-          <OneOnOneTable items={upcoming} state="upcoming" />
+          <ReviewTable items={upcoming} state="upcoming" />
         )}
       </section>
 
       <section className="space-y-3">
         <h2 className="text-[12.5px] font-medium font-heading text-muted-foreground">
-          Recent afgerond
+          Afgerond
         </h2>
         {recent.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              Nog geen afgeronde 1-op-1&apos;s.
+              Nog geen afgeronde functioneringsgesprekken.
             </p>
           </div>
         ) : (
-          <OneOnOneTable items={recent} state="completed" />
+          <ReviewTable items={recent} state="completed" />
         )}
       </section>
     </div>
   );
 }
 
-function OneOnOneTable({
+function ReviewTable({
   items,
   state,
 }: {
-  items: ManagerUpcomingOneOnOne[];
+  items: PerformanceReviewListItem[];
   state: "upcoming" | "completed";
 }) {
   return (
@@ -63,7 +63,7 @@ function OneOnOneTable({
               Persoon
             </th>
             <th className="px-4 py-3 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
-              {state === "completed" ? "Afgerond" : "Datum"}
+              {state === "completed" ? "Afgerond" : "Gestart"}
             </th>
             <th className="hidden md:table-cell px-4 py-3 text-left text-[12.5px] font-medium font-heading text-muted-foreground">
               Onderwerp
@@ -98,32 +98,30 @@ function OneOnOneTable({
               <td className="px-4 py-3.5 text-[13px] text-muted-foreground whitespace-nowrap">
                 {state === "completed" && item.completed_at
                   ? formatRelativeWeeks(item.completed_at)
-                  : formatDate(item.scheduled_at)}
+                  : formatDate(item.cycle_started_at)}
               </td>
               <td className="hidden md:table-cell px-4 py-3.5">
                 <span className="text-[13px]">
-                  {item.subject || <span className="text-muted-foreground/50">—</span>}
+                  {item.template_name || (
+                    <span className="text-muted-foreground/50">
+                      Functioneringsgesprek
+                    </span>
+                  )}
                 </span>
               </td>
               <td className="hidden lg:table-cell px-4 py-3.5">
                 {state === "completed" ? (
-                  item.shared_summary ? (
-                    <p className="truncate text-[12px] text-muted-foreground max-w-[240px]">
-                      {item.shared_summary}
-                    </p>
-                  ) : (
-                    <span className="text-muted-foreground/40 text-[12px]">Geen samenvatting</span>
-                  )
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                    <CalendarClock className="h-3 w-3" strokeWidth={1.75} />
-                    Gepland
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <CircleCheck className="h-3 w-3" strokeWidth={2} />
+                    Afgerond
                   </span>
+                ) : (
+                  <CycleProgress item={item} />
                 )}
               </td>
               <td className="px-6 py-3.5 text-right">
                 <Link
-                  href={`/een-op-een/${item.id}`}
+                  href={`/functioneringsgesprek/${item.id}`}
                   className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground/50 transition-colors group-hover:text-primary"
                 >
                   {state === "upcoming" ? "Openen" : "Bekijken"}
@@ -135,5 +133,29 @@ function OneOnOneTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function CycleProgress({ item }: { item: PerformanceReviewListItem }) {
+  const submitted = [
+    item.has_employee_input,
+    item.has_peer_submitted,
+    item.has_manager_submitted,
+  ].filter(Boolean).length;
+
+  if (submitted === 3) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <CircleCheck className="h-3 w-3" strokeWidth={2} />
+        Klaar voor gesprek
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+      <CalendarClock className="h-3 w-3" strokeWidth={1.75} />
+      {submitted} van 3 input binnen
+    </span>
   );
 }

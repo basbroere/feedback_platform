@@ -81,7 +81,7 @@ export function DossierExpandable({
         <div className="flex items-center gap-2">
           {badge ? (
             <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wider ${badgeClass}`}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium font-heading ${badgeClass}`}
             >
               {badge}
             </span>
@@ -112,7 +112,7 @@ export function DossierExpandable({
             if (!populated.length) return null;
             return (
               <div key={section.heading} className="space-y-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
                   {section.heading}
                 </p>
                 <div className="space-y-2">
@@ -130,7 +130,7 @@ export function DossierExpandable({
 
           {relatedActionItems && relatedActionItems.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="text-[12.5px] font-medium font-heading text-muted-foreground">
                 Actiepunten uit dit gesprek
               </p>
               <ul className="space-y-1">

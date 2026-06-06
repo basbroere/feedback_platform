@@ -61,7 +61,7 @@ export function PersonaSwitcher({
 
       <DropdownMenuContent align="start" sideOffset={8} className="w-72 p-2">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80">
+          <DropdownMenuLabel className="px-2 pb-1 pt-1 text-[11.5px] font-medium font-heading text-muted-foreground/80">
             Wissel persona
           </DropdownMenuLabel>
         </DropdownMenuGroup>
@@ -69,7 +69,7 @@ export function PersonaSwitcher({
         <div className="max-h-80 overflow-y-auto pr-1">
           {teams.map((team) => (
             <DropdownMenuGroup key={team.id} className="mb-1.5">
-              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+              <DropdownMenuLabel className="px-2 py-1 text-[11.5px] font-medium font-heading text-muted-foreground/70">
                 {team.name}
               </DropdownMenuLabel>
               {team.members.map((m) => (

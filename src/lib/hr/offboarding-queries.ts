@@ -134,8 +134,8 @@ export type DossierActionItem = {
   id: string;
   description: string;
   status: "open" | "completed" | "expired";
-  source_type: "one_on_one" | "performance_review" | "evaluation";
-  source_id: string;
+  source_type: "one_on_one" | "performance_review" | "evaluation" | "personal";
+  source_id: string | null;
   target_date: string | null;
   created_at: string;
   completed_at: string | null;

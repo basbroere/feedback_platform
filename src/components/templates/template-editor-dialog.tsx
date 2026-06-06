@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 const TYPE_OPTIONS: TemplateType[] = [
   "peer_feedback",
   "peer_360",
+  "upward_feedback",
   "one_on_one",
   "evaluation",
 ];
@@ -241,7 +242,7 @@ export function TemplateEditorDialog(props: Props) {
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <Label className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <Label className="text-[13px] font-medium font-heading text-muted-foreground">
                 Vragen
               </Label>
               <span className="text-[12px] text-muted-foreground">
@@ -256,7 +257,7 @@ export function TemplateEditorDialog(props: Props) {
                   className="rounded-xl bg-card p-3 space-y-3 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    <span className="text-[12.5px] font-medium font-heading text-muted-foreground">
                       Vraag {idx + 1}
                     </span>
                     <div className="flex items-center gap-1">

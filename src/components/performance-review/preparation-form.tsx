@@ -52,7 +52,7 @@ export function PerformanceReviewPreparationForm({
           router.refresh();
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Opslaan mislukt");
+        setError(e instanceof Error ? e.message : "Save failed");
       }
     });
   }
@@ -78,10 +78,10 @@ export function PerformanceReviewPreparationForm({
 
       <div className="flex items-center gap-3">
         <Button onClick={submit} disabled={isPending}>
-          {isPending ? "Bezig..." : "Opslaan"}
+          {isPending ? "Saving..." : "Save"}
         </Button>
         {saved ? (
-          <span className="text-sm text-muted-foreground">Opgeslagen.</span>
+          <span className="text-sm text-muted-foreground">Saved.</span>
         ) : null}
         {error ? <span className="text-sm text-destructive">{error}</span> : null}
       </div>
@@ -154,7 +154,7 @@ function renderControl(
           rows={3}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Wat wil je hierover delen?"
+          placeholder="What would you like to share?"
         />
       );
   }

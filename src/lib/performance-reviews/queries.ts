@@ -21,10 +21,10 @@ const PERSON_COLS = "id, name, avatar_url";
 const TEMPLATE_COLS = "id, name, questions";
 
 const SAFE_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, shared_summary";
+  "id, manager_id, employee_id, template_id, status, subject, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, shared_summary";
 
 const FULL_PR_COLS =
-  "id, manager_id, employee_id, template_id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
+  "id, manager_id, employee_id, template_id, status, subject, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, manager_private_notes, shared_summary";
 
 const SIX_MONTHS_DAYS = 182;
 
@@ -34,6 +34,7 @@ type RawPerformanceReviewRow = {
   employee_id: string;
   template_id: string | null;
   status: PerformanceReviewStatus;
+  subject: string | null;
   cycle_started_at: string;
   completed_at: string | null;
   scheduled_at: string | null;
@@ -53,6 +54,7 @@ function mapFull(row: RawPerformanceReviewRow): PerformanceReviewFull {
     employee_id: row.employee_id,
     template_id: row.template_id,
     status: row.status,
+    subject: row.subject ?? null,
     cycle_started_at: row.cycle_started_at,
     completed_at: row.completed_at,
     scheduled_at: row.scheduled_at ?? null,
@@ -127,7 +129,6 @@ type RawListRow = {
   completed_at: string | null;
   scheduled_at: string | null;
   employee_self_evaluation: Record<string, string> | null;
-  manager_preparation: Record<string, string> | null;
   template: { name: string } | null;
   employee: PersonRef | null;
   manager: PersonRef | null;
@@ -150,10 +151,6 @@ function mapListRow(
       Object.values(row.employee_self_evaluation ?? {}).some(
         (v) => typeof v === "string" && v.trim().length > 0,
       ) ?? false,
-    has_manager_input:
-      Object.values(row.manager_preparation ?? {}).some(
-        (v) => typeof v === "string" && v.trim().length > 0,
-      ) ?? false,
     has_peer_submitted: stats?.has_peer_submitted ?? false,
     has_manager_submitted: stats?.has_manager_submitted ?? false,
     employee: row.employee,
@@ -161,7 +158,7 @@ function mapListRow(
   };
 }
 
-const LIST_COLS = `id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, manager_preparation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
+const LIST_COLS = `id, status, cycle_started_at, completed_at, scheduled_at, employee_self_evaluation, template:templates(name), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS})`;
 
 async function batchFeedbackStats(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -326,7 +323,10 @@ export async function getPerformanceReviewDossier(
   const oneOnOneIds = Array.from(
     new Set(
       items
-        .filter((i) => i.source_type === "one_on_one")
+        .filter(
+          (i): i is ActionItem & { source_id: string } =>
+            i.source_type === "one_on_one" && i.source_id !== null,
+        )
         .map((i) => i.source_id),
     ),
   );
@@ -354,7 +354,7 @@ export async function getPerformanceReviewDossier(
   }
 
   const completedActionItems: DossierActionItem[] = items.map((it) => {
-    if (it.source_type === "one_on_one") {
+    if (it.source_type === "one_on_one" && it.source_id) {
       const info = oneOnOneMap.get(it.source_id);
       return {
         ...it,
@@ -367,6 +367,14 @@ export async function getPerformanceReviewDossier(
       return {
         ...it,
         source_label: "Functioneringsgesprek",
+        source_href: null,
+        source_date: null,
+      };
+    }
+    if (it.source_type === "personal") {
+      return {
+        ...it,
+        source_label: "Persoonlijk",
         source_href: null,
         source_date: null,
       };
@@ -446,9 +454,10 @@ export async function listScheduledPerformanceReviewsForManager(
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }
 
-// Haalt de peer- en manager-feedback-rijen op die bij deze cyclus horen.
+// Haalt peer-, manager- en upward-feedback-rijen op die bij deze cyclus horen.
 // Peer = author die niet de manager en niet de medewerker is.
 // Manager = author die de manager_id van de cyclus is.
+// Upward = source_type 'upward_feedback' met author = medewerker, recipient = manager.
 // hideUntilManagerSubmits: als true, wordt peer-rij verborgen als manager nog niet submitted heeft.
 export async function getCycleInputs(
   performanceReviewId: string,
@@ -460,19 +469,20 @@ export async function getCycleInputs(
     .select("manager_id, employee_id")
     .eq("id", performanceReviewId)
     .maybeSingle();
-  if (!pr) return { peer: null, manager: null };
+  if (!pr) return { peer: null, manager: null, upward: null };
 
   const { data } = await supabase
     .from("feedback")
     .select(
-      `id, author_id, status, responses, submitted_at, is_cross_team, created_at, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
+      `id, source_type, author_id, status, responses, submitted_at, is_cross_team, created_at, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
     )
-    .eq("source_type", "performance_review")
+    .in("source_type", ["performance_review", "upward_feedback"])
     .eq("source_id", performanceReviewId)
     .order("created_at", { ascending: false });
 
   type Row = {
     id: string;
+    source_type: "performance_review" | "upward_feedback";
     author_id: string;
     status: FeedbackStatus;
     responses: Record<string, string> | null;
@@ -486,13 +496,24 @@ export async function getCycleInputs(
 
   const managerRow =
     rows.find(
-      (r) => r.author_id === pr.manager_id && r.status !== "declined",
+      (r) =>
+        r.source_type === "performance_review" &&
+        r.author_id === pr.manager_id &&
+        r.status !== "declined",
     ) ?? null;
   const peerRow =
     rows.find(
       (r) =>
+        r.source_type === "performance_review" &&
         r.author_id !== pr.manager_id &&
         r.author_id !== pr.employee_id &&
+        r.status !== "declined",
+    ) ?? null;
+  const upwardRow =
+    rows.find(
+      (r) =>
+        r.source_type === "upward_feedback" &&
+        r.author_id === pr.employee_id &&
         r.status !== "declined",
     ) ?? null;
 
@@ -511,10 +532,14 @@ export async function getCycleInputs(
   const managerHasSubmitted = managerRow?.status === "submitted";
 
   if (options?.hideUntilManagerSubmits && !managerHasSubmitted) {
-    return { peer: null, manager: toCycle(managerRow) };
+    return { peer: null, manager: toCycle(managerRow), upward: toCycle(upwardRow) };
   }
 
-  return { peer: toCycle(peerRow), manager: toCycle(managerRow) };
+  return {
+    peer: toCycle(peerRow),
+    manager: toCycle(managerRow),
+    upward: toCycle(upwardRow),
+  };
 }
 
 export async function listOpenPerformanceReviewsForManager(

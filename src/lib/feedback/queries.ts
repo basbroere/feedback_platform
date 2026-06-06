@@ -79,7 +79,12 @@ export async function getFeedbackForEmployee(
   const performanceReviewIds = Array.from(
     new Set(
       items
-        .filter((f) => f.source_type === "performance_review" && f.source_id)
+        .filter(
+          (f) =>
+            (f.source_type === "performance_review" ||
+              f.source_type === "upward_feedback") &&
+            f.source_id,
+        )
         .map((f) => f.source_id as string),
     ),
   );
@@ -168,6 +173,14 @@ export async function getFeedbackForEmployee(
       source = {
         kind: "performance_review",
         label: pr?.template?.name ?? "Functioneringsgesprek",
+        href: null,
+        date: null,
+        with: null,
+      };
+    } else if (f.source_type === "upward_feedback") {
+      source = {
+        kind: "upward_feedback",
+        label: "Upward feedback uit functioneringsgesprek",
         href: null,
         date: null,
         with: null,
