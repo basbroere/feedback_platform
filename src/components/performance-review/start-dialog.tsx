@@ -20,6 +20,14 @@ import type { PerformanceReviewTemplate } from "@/lib/performance-reviews/types"
 import type { PersonRef } from "@/lib/one-on-ones/types";
 import { cn } from "@/lib/utils";
 
+function defaultScheduledAt(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(10, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 type Props =
   | {
       employeeId: string;
@@ -56,7 +64,7 @@ export function StartPerformanceReviewDialog(props: Props) {
   const [templateId, setTemplateId] = useState<string>(
     templates[0]?.id ?? "",
   );
-  const [scheduledAt, setScheduledAt] = useState<string>("");
+  const [scheduledAt, setScheduledAt] = useState<string>(defaultScheduledAt());
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +81,7 @@ export function StartPerformanceReviewDialog(props: Props) {
       return;
     }
     if (!scheduledAt) {
-      setError("Kies een datum voor het gesprek.");
+      setError("Kies een datum en tijd.");
       return;
     }
     startTransition(async () => {
@@ -139,10 +147,10 @@ export function StartPerformanceReviewDialog(props: Props) {
           ) : null}
 
           <div className="grid gap-2">
-            <Label htmlFor="pr-date">Datum gesprek</Label>
+            <Label htmlFor="pr-date">Datum en tijd</Label>
             <input
               id="pr-date"
-              type="date"
+              type="datetime-local"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
               className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
