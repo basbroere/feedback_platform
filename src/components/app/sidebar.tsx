@@ -10,7 +10,6 @@ import {
   MessageCircle,
   MessageSquareText,
   ShieldCheck,
-  Sliders,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -41,7 +40,6 @@ function navSections(persona: Persona): NavSection[] {
   const kennisbank: NavItem = { href: "/kennisbank", label: "Kennisbank", icon: BookOpen, tone: "sky" };
   const eenOpEen: NavItem = { href: "/een-op-een", label: "1-op-1", icon: MessageSquareText, tone: "blue" };
   const functioneringsgesprek: NavItem = { href: "/functioneringsgesprek", label: "Functionering", icon: ClipboardCheck, tone: "amber" };
-  const templates: NavItem = { href: "/templates", label: "Templates", icon: Sliders, tone: "sky" };
   const beheer: NavItem = { href: "/beheer", label: "Beheer", icon: ShieldCheck, tone: "rose" };
 
   const sections: NavSection[] =
@@ -56,7 +54,7 @@ function navSections(persona: Persona): NavSection[] {
         ];
 
   if (persona.is_admin) {
-    sections.push({ title: "Beheer", items: [templates, beheer] });
+    sections.push({ title: "Beheer", items: [beheer] });
   }
 
   return sections;

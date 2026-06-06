@@ -25,9 +25,11 @@ const STEP = 8;
 export function MemberActionItemsSection({
   open,
   completed,
+  hideTabs = false,
 }: {
   open: DossierItem[];
   completed: DossierItem[];
+  hideTabs?: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("open");
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
@@ -48,14 +50,16 @@ export function MemberActionItemsSection({
 
   return (
     <div className="space-y-3">
-      <div className="border-b border-border/60">
-        <InlineTabs<TabKey>
-          value={tab}
-          onChange={changeTab}
-          options={tabOptions}
-          size="sm"
-        />
-      </div>
+      {hideTabs ? null : (
+        <div className="border-b border-border/60">
+          <InlineTabs<TabKey>
+            value={tab}
+            onChange={changeTab}
+            options={tabOptions}
+            size="sm"
+          />
+        </div>
+      )}
 
       {slice.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-8 text-center">

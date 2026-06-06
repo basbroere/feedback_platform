@@ -12,7 +12,6 @@ import {
   MessageCircle,
   MessageSquareText,
   ShieldCheck,
-  Sliders,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -43,7 +42,6 @@ const ALL_ITEMS: Record<string, NavItem> = {
     icon: ClipboardCheck,
     tone: "amber",
   },
-  templates: { href: "/templates", label: "Templates", icon: Sliders, tone: "sky" },
   beheer: { href: "/beheer", label: "Beheer", icon: ShieldCheck, tone: "rose" },
 };
 
@@ -65,7 +63,7 @@ function overflowItems(persona: Persona): NavItem[] {
   ];
   if (persona.role === "manager") all.push(ALL_ITEMS.team);
   if (persona.is_admin) {
-    all.push(ALL_ITEMS.templates, ALL_ITEMS.beheer);
+    all.push(ALL_ITEMS.beheer);
   }
   return all.filter((item) => !primary.has(item.href));
 }
