@@ -30,8 +30,9 @@ export default async function UitDienstOverzichtPage() {
         </h1>
         <p className="text-[14px] text-muted-foreground">
           Medewerkers die in de afgelopen twee jaar uit dienst zijn gegaan. Klik
-          op een naam voor het dossier met alle gesprekken, actiepunten en
-          feedback.
+          op een naam voor de gespreksgeschiedenis: 1-op-1's, functionerings- en
+          beoordelingsgesprekken. Actiepunten en peer-feedback blijven tussen
+          medewerker en manager.
         </p>
       </header>
 

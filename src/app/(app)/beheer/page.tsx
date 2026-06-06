@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ShieldCheck, UserMinus, UserPlus, UsersRound } from "lucide-react";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Sliders,
+  UserMinus,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 import { requirePersona } from "@/lib/persona/server";
 import { Card } from "@/components/ui/card";
 import { PageTitle } from "@/components/ui/page-title";
@@ -22,7 +29,7 @@ export default async function BeheerPage() {
         icon={ShieldCheck}
         tone="rose"
         title="Beheer"
-        subtitle="Teams en personen"
+        subtitle="Personen, teams en templates"
       />
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -36,14 +43,21 @@ export default async function BeheerPage() {
         <BeheerCard
           href="/beheer/teams"
           icon={UsersRound}
-          tone="emerald"
+          tone="violet"
           title="Teams"
           description="Teams aanmaken en een team-lead koppelen."
         />
         <BeheerCard
+          href="/templates"
+          icon={Sliders}
+          tone="sky"
+          title="Templates"
+          description="Gespreks-templates beheren en activeren."
+        />
+        <BeheerCard
           href="/beheer/uitdienst"
           icon={UserMinus}
-          tone="slate"
+          tone="amber"
           title="Uit dienst"
           description="Dossiers van medewerkers die uit dienst zijn."
         />
@@ -52,20 +66,24 @@ export default async function BeheerPage() {
   );
 }
 
-type Tone = "primary" | "emerald" | "slate";
+type Tone = "primary" | "violet" | "sky" | "amber";
 
 const TONE: Record<Tone, { icon: string; button: string }> = {
   primary: {
     icon: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
     button: "bg-blue-600 hover:bg-blue-700 text-white",
   },
-  emerald: {
-    icon: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
-    button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  violet: {
+    icon: "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300",
+    button: "bg-violet-600 hover:bg-violet-700 text-white",
   },
-  slate: {
-    icon: "bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300",
-    button: "bg-slate-600 hover:bg-slate-700 text-white",
+  sky: {
+    icon: "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300",
+    button: "bg-sky-600 hover:bg-sky-700 text-white",
+  },
+  amber: {
+    icon: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
+    button: "bg-amber-600 hover:bg-amber-700 text-white",
   },
 };
 

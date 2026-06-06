@@ -40,7 +40,13 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "cross_team", label: "Cross-team" },
 ];
 
-export function MemberFeedbackTable({ items }: { items: FeedbackWithSource[] }) {
+export function MemberFeedbackTable({
+  items,
+  hideToolbar = false,
+}: {
+  items: FeedbackWithSource[];
+  hideToolbar?: boolean;
+}) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -112,22 +118,24 @@ export function MemberFeedbackTable({ items }: { items: FeedbackWithSource[] }) 
   return (
     <>
       <div className="space-y-3">
-        <div className="flex flex-col gap-3 border-b border-border/60 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-          <InlineTabs<FilterKey>
-            value={filter}
-            onChange={setFilter}
-            options={tabOptions}
-          />
-          <div className="relative w-full pb-2 sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Zoek in feedback of naam"
-              className="h-8 pl-9 text-[13px]"
+        {hideToolbar ? null : (
+          <div className="flex flex-col gap-3 border-b border-border/60 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <InlineTabs<FilterKey>
+              value={filter}
+              onChange={setFilter}
+              options={tabOptions}
             />
+            <div className="relative w-full pb-2 sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Zoek in feedback of naam"
+                className="h-8 pl-9 text-[13px]"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="min-h-[260px] rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           {filtered.length === 0 ? (

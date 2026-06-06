@@ -130,39 +130,18 @@ export type DossierEvaluation = {
   counterpart_role: "manager" | "employee";
 };
 
-export type DossierActionItem = {
-  id: string;
-  description: string;
-  status: "open" | "completed" | "expired";
-  source_type: "one_on_one" | "performance_review" | "evaluation" | "personal";
-  source_id: string | null;
-  target_date: string | null;
-  created_at: string;
-  completed_at: string | null;
-};
-
-export type DossierPeerFeedback = {
-  id: string;
-  body: string | null;
-  prompt: string | null;
-  is_cross_team: boolean;
-  status: "requested" | "submitted" | "declined";
-  submitted_at: string | null;
-  created_at: string;
-  author: { id: string; name: string; avatar_url: string | null } | null;
-};
-
 export type OffboardingDossier = {
   user: OffboardedUser;
   oneOnOnes: DossierOneOnOne[];
   performanceReviews: DossierPerformanceReview[];
   evaluations: DossierEvaluation[];
-  actionItems: DossierActionItem[];
-  peerFeedback: DossierPeerFeedback[];
 };
 
-// Bouwt het volledige uit-dienst-dossier voor één medewerker.
-// Privé-notities van managers worden bewust niet meegeladen.
+// HR ziet bij uit-dienst medewerkers 1-op-1's, functionerings- en
+// beoordelingsgesprekken in één gecombineerde tabel. Actiepunten en
+// peer-feedback blijven in de database staan (zodat re-activatie ze terugbrengt
+// in het account van medewerker en manager), maar worden hier niet opgehaald.
+// Privé-notities van managers blijven sowieso buiten beeld.
 export async function getOffboardingDossier(
   userId: string,
 ): Promise<OffboardingDossier | null> {
@@ -171,47 +150,31 @@ export async function getOffboardingDossier(
 
   const supabase = await createClient();
 
-  const [oneOnOnesRes, reviewsRes, evaluationsRes, actionItemsRes, feedbackRes] =
-    await Promise.all([
-      supabase
-        .from("one_on_ones")
-        .select(
-          `id, manager_id, employee_id, subject, scheduled_at, completed_at, shared_summary, employee_preparation, template:templates(${TEMPLATE_COLS}), manager:users!one_on_ones_manager_id_fkey(${PERSON_COLS}), employee:users!one_on_ones_employee_id_fkey(${PERSON_COLS})`,
-        )
-        .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
-        .order("scheduled_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("performance_reviews")
-        .select(
-          `id, manager_id, employee_id, status, cycle_started_at, completed_at, shared_summary, employee_self_evaluation, template:templates(${TEMPLATE_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS}), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS})`,
-        )
-        .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
-        .order("cycle_started_at", { ascending: false }),
-      supabase
-        .from("evaluations")
-        .select(
-          `id, manager_id, employee_id, scheduled_at, completed_at, shared_summary, employee_self_reflection, manager_assessments, template:templates(${TEMPLATE_COLS}), manager:users!evaluations_manager_id_fkey(${PERSON_COLS}), employee:users!evaluations_employee_id_fkey(${PERSON_COLS})`,
-        )
-        .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
-        .order("scheduled_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("action_items")
-        .select(
-          "id, description, status, source_type, source_id, target_date, created_at, completed_at",
-        )
-        .eq("owner_id", userId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("feedback")
-        .select(
-          `id, body, prompt, status, submitted_at, created_at, is_cross_team, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
-        )
-        .eq("recipient_id", userId)
-        .order("submitted_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false }),
-    ]);
+  const [oneOnOnesRes, reviewsRes, evaluationsRes] = await Promise.all([
+    supabase
+      .from("one_on_ones")
+      .select(
+        `id, manager_id, employee_id, subject, scheduled_at, completed_at, shared_summary, employee_preparation, template:templates(${TEMPLATE_COLS}), manager:users!one_on_ones_manager_id_fkey(${PERSON_COLS}), employee:users!one_on_ones_employee_id_fkey(${PERSON_COLS})`,
+      )
+      .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
+      .order("scheduled_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("performance_reviews")
+      .select(
+        `id, manager_id, employee_id, status, cycle_started_at, completed_at, shared_summary, employee_self_evaluation, template:templates(${TEMPLATE_COLS}), manager:users!performance_reviews_manager_id_fkey(${PERSON_COLS}), employee:users!performance_reviews_employee_id_fkey(${PERSON_COLS})`,
+      )
+      .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
+      .order("cycle_started_at", { ascending: false }),
+    supabase
+      .from("evaluations")
+      .select(
+        `id, manager_id, employee_id, scheduled_at, completed_at, shared_summary, employee_self_reflection, manager_assessments, template:templates(${TEMPLATE_COLS}), manager:users!evaluations_manager_id_fkey(${PERSON_COLS}), employee:users!evaluations_employee_id_fkey(${PERSON_COLS})`,
+      )
+      .or(`employee_id.eq.${userId},manager_id.eq.${userId}`)
+      .order("scheduled_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false }),
+  ]);
 
   type OneOnOneRow = {
     id: string;
@@ -308,38 +271,10 @@ export async function getOffboardingDossier(
     };
   });
 
-  const actionItems = (actionItemsRes.data ?? []) as unknown as DossierActionItem[];
-
-  type FeedbackRow = {
-    id: string;
-    body: string | null;
-    prompt: string | null;
-    status: "requested" | "submitted" | "declined";
-    submitted_at: string | null;
-    created_at: string;
-    is_cross_team: boolean;
-    author: { id: string; name: string; avatar_url: string | null } | null;
-  };
-
-  const peerFeedback: DossierPeerFeedback[] = (
-    (feedbackRes.data ?? []) as unknown as FeedbackRow[]
-  ).map((row) => ({
-    id: row.id,
-    body: row.body,
-    prompt: row.prompt,
-    status: row.status,
-    submitted_at: row.submitted_at,
-    created_at: row.created_at,
-    is_cross_team: row.is_cross_team,
-    author: row.author,
-  }));
-
   return {
     user,
     oneOnOnes,
     performanceReviews,
     evaluations,
-    actionItems,
-    peerFeedback,
   };
 }

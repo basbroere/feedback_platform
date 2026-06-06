@@ -64,7 +64,7 @@ async function PersonView({ persona }: { persona: Persona }) {
     isManager ? getUpcomingOneOnOnesForManager(persona.id) : Promise.resolve([]),
     getOpenFeedbackRequestsForPeer(persona.id),
     getDossierForEmployee(persona.id),
-    isManager ? Promise.resolve([]) : getFeedbackForEmployee(persona.id),
+    getFeedbackForEmployee(persona.id),
     countFeedbackReceivedSince(persona.id, fourWeeksAgoIso),
     getLatestCompletedOneOnOneForUser(persona.id, persona.role),
     isManager ? getTeamMembers(persona.id) : Promise.resolve([]),
