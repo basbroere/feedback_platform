@@ -65,8 +65,8 @@ export type ActionItem = {
   status: "open" | "completed" | "expired";
   target_date: string | null;
   notes: string | null;
-  source_type: "one_on_one" | "performance_review" | "evaluation";
-  source_id: string;
+  source_type: "one_on_one" | "performance_review" | "evaluation" | "personal";
+  source_id: string | null;
   created_at: string;
   completed_at: string | null;
   owner?: PersonRef;

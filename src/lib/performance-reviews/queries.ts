@@ -326,7 +326,10 @@ export async function getPerformanceReviewDossier(
   const oneOnOneIds = Array.from(
     new Set(
       items
-        .filter((i) => i.source_type === "one_on_one")
+        .filter(
+          (i): i is ActionItem & { source_id: string } =>
+            i.source_type === "one_on_one" && i.source_id !== null,
+        )
         .map((i) => i.source_id),
     ),
   );
@@ -354,7 +357,7 @@ export async function getPerformanceReviewDossier(
   }
 
   const completedActionItems: DossierActionItem[] = items.map((it) => {
-    if (it.source_type === "one_on_one") {
+    if (it.source_type === "one_on_one" && it.source_id) {
       const info = oneOnOneMap.get(it.source_id);
       return {
         ...it,
@@ -367,6 +370,14 @@ export async function getPerformanceReviewDossier(
       return {
         ...it,
         source_label: "Functioneringsgesprek",
+        source_href: null,
+        source_date: null,
+      };
+    }
+    if (it.source_type === "personal") {
+      return {
+        ...it,
+        source_label: "Persoonlijk",
         source_href: null,
         source_date: null,
       };

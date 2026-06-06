@@ -5,7 +5,7 @@ const PERSON_COLS = "id, name, avatar_url";
 const ITEM_COLS = `id, owner_id, description, status, target_date, notes, source_type, source_id, created_at, completed_at, owner:users!action_items_owner_id_fkey(${PERSON_COLS})`;
 
 export type DossierSource = {
-  kind: "one_on_one" | "performance_review" | "evaluation";
+  kind: "one_on_one" | "performance_review" | "evaluation" | "personal";
   label: string;
   href: string | null;
   date: string | null;
@@ -65,7 +65,10 @@ export async function getDossierForEmployee(
   const oneOnOneIds = Array.from(
     new Set(
       [...openItems, ...completedItems]
-        .filter((i) => i.source_type === "one_on_one")
+        .filter(
+          (i): i is ActionItem & { source_id: string } =>
+            i.source_type === "one_on_one" && i.source_id !== null,
+        )
         .map((i) => i.source_id),
     ),
   );
@@ -100,7 +103,7 @@ export async function getDossierForEmployee(
   const decorate = (it: ActionItem): DossierItem => {
     let source: DossierSource | null = null;
     if (it.source_type === "one_on_one") {
-      source = oneOnOneSourceById.get(it.source_id) ?? {
+      source = (it.source_id ? oneOnOneSourceById.get(it.source_id) : null) ?? {
         kind: "one_on_one",
         label: "1-op-1",
         href: null,
@@ -119,6 +122,14 @@ export async function getDossierForEmployee(
       source = {
         kind: "evaluation",
         label: "Beoordelingsgesprek",
+        href: null,
+        date: null,
+        with: null,
+      };
+    } else if (it.source_type === "personal") {
+      source = {
+        kind: "personal",
+        label: "Persoonlijk",
         href: null,
         date: null,
         with: null,

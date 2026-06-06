@@ -23,7 +23,7 @@ export async function updateActionItemStatus(input: {
 
   // Owner mag altijd. Anders moet je manager zijn van de bron-1-op-1.
   let allowed = row.owner_id === personaId;
-  if (!allowed && row.source_type === "one_on_one") {
+  if (!allowed && row.source_type === "one_on_one" && row.source_id) {
     const { data: one } = await supabase
       .from("one_on_ones")
       .select("manager_id")
@@ -90,10 +90,45 @@ export async function createActionItemForOneOnOne(input: {
   return { id: data.id };
 }
 
+export async function createPersonalActionItem(input: {
+  description: string;
+  notes?: string | null;
+  targetDate?: string | null;
+}): Promise<{ id: string }> {
+  const personaId = await getCurrentPersonaId();
+  if (!personaId) throw new Error("Geen persona geselecteerd");
+
+  const description = input.description.trim();
+  if (!description) throw new Error("Titel is leeg");
+  const notes = input.notes?.trim() ? input.notes.trim() : null;
+  const targetDate = input.targetDate?.trim() ? input.targetDate.trim() : null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("action_items")
+    .insert({
+      owner_id: personaId,
+      description,
+      notes,
+      target_date: targetDate,
+      status: "open" as const,
+      source_type: "personal" as const,
+      source_id: null,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Aanmaken mislukt");
+
+  revalidatePath("/actiepunten");
+  revalidatePath("/dashboard");
+  return { id: data.id };
+}
+
 export async function updateActionItemDetails(input: {
   id: string;
   description: string;
   notes?: string | null;
+  targetDate?: string | null;
 }) {
   const personaId = await getCurrentPersonaId();
   if (!personaId) throw new Error("Geen persona geselecteerd");
@@ -106,6 +141,12 @@ export async function updateActionItemDetails(input: {
       : input.notes && input.notes.trim()
         ? input.notes.trim()
         : null;
+  const targetDate =
+    input.targetDate === undefined
+      ? undefined
+      : input.targetDate && input.targetDate.trim()
+        ? input.targetDate.trim()
+        : null;
 
   const supabase = await createClient();
   const { data: row, error } = await supabase
@@ -116,7 +157,7 @@ export async function updateActionItemDetails(input: {
   if (error || !row) throw new Error("Actiepunt niet gevonden");
 
   let allowed = row.owner_id === personaId;
-  if (!allowed && row.source_type === "one_on_one") {
+  if (!allowed && row.source_type === "one_on_one" && row.source_id) {
     const { data: one } = await supabase
       .from("one_on_ones")
       .select("manager_id")
@@ -128,6 +169,7 @@ export async function updateActionItemDetails(input: {
 
   const patch: Record<string, unknown> = { description };
   if (notes !== undefined) patch.notes = notes;
+  if (targetDate !== undefined) patch.target_date = targetDate;
 
   const { error: updErr } = await supabase
     .from("action_items")
@@ -135,7 +177,7 @@ export async function updateActionItemDetails(input: {
     .eq("id", input.id);
   if (updErr) throw new Error(updErr.message);
 
-  if (row.source_type === "one_on_one") {
+  if (row.source_type === "one_on_one" && row.source_id) {
     revalidatePath(`/een-op-een/${row.source_id}`);
   }
   revalidatePath("/een-op-een");
@@ -155,9 +197,12 @@ export async function deleteActionItem(id: string) {
     .maybeSingle();
   if (error || !row) throw new Error("Actiepunt niet gevonden");
 
-  // Verwijderen mag alleen de manager van het bron-1-op-1 (of bron-cyclus).
+  // Persoonlijke items: eigenaar mag zelf verwijderen.
+  // 1-op-1-items: alleen de manager van het bron-1-op-1.
   let allowed = false;
-  if (row.source_type === "one_on_one") {
+  if (row.source_type === "personal") {
+    allowed = row.owner_id === personaId;
+  } else if (row.source_type === "one_on_one" && row.source_id) {
     const { data: one } = await supabase
       .from("one_on_ones")
       .select("manager_id")
@@ -173,7 +218,7 @@ export async function deleteActionItem(id: string) {
     .eq("id", id);
   if (delErr) throw new Error(delErr.message);
 
-  if (row.source_type === "one_on_one") {
+  if (row.source_type === "one_on_one" && row.source_id) {
     revalidatePath(`/een-op-een/${row.source_id}`);
   }
   revalidatePath("/een-op-een");
