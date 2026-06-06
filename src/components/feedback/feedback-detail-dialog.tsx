@@ -122,5 +122,11 @@ function buildSourceHref(item: FeedbackWithSource): {
       label: "Naar het functioneringsgesprek",
     };
   }
+  if (item.source_type === "upward_feedback" && item.source_id) {
+    return {
+      href: `/functioneringsgesprek/${item.source_id}`,
+      label: "Naar het functioneringsgesprek",
+    };
+  }
   return { href: null, label: "" };
 }

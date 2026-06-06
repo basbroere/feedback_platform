@@ -3,7 +3,8 @@ import type { PersonRef, TemplateQuestion } from "@/lib/one-on-ones/types";
 export type FeedbackSource =
   | "one_on_one"
   | "peer_request"
-  | "performance_review";
+  | "performance_review"
+  | "upward_feedback";
 
 export type FeedbackStatus = "requested" | "submitted" | "declined";
 

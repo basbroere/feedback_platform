@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  ArrowUp,
   Check,
   CheckCircle2,
   CircleCheck,
@@ -50,6 +51,7 @@ type Status = "open" | "completed" | "expired";
 export function PerformanceReviewMeetingView({
   review,
   questions,
+  upwardQuestions,
   cycleInputs,
   newActionItems,
   dossierActionItems,
@@ -59,6 +61,7 @@ export function PerformanceReviewMeetingView({
 }: {
   review: PerformanceReviewFull;
   questions: TemplateQuestion[];
+  upwardQuestions: TemplateQuestion[];
   cycleInputs: CycleInputs;
   newActionItems: ActionItem[];
   dossierActionItems: DossierActionItem[];
@@ -177,6 +180,12 @@ export function PerformanceReviewMeetingView({
       <PeerFeedbackCard
         questions={questions}
         peer={cycleInputs.peer}
+      />
+
+      <UpwardFeedbackCard
+        questions={upwardQuestions}
+        upward={cycleInputs.upward}
+        employeeName={review.employee.name}
       />
 
       <ManagerCycleFeedbackCard
@@ -303,9 +312,16 @@ function CycleStatusGrid({
   const firstName = employeeName.split(" ")[0];
   const peer = cycleInputs.peer;
   const manager = cycleInputs.manager;
+  const upward = cycleInputs.upward;
+  const upwardSubmitted = upward?.status === "submitted";
+  const upwardHasContent =
+    !!upward &&
+    Object.values(upward.responses).some(
+      (v) => typeof v === "string" && v.trim().length > 0,
+    );
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
       <StatusCard
         icon={<UserCircle2 className="h-4 w-4" />}
         title="Zelfreflectie"
@@ -332,6 +348,18 @@ function CycleStatusGrid({
                 ? `${peer.author.name} ziet af`
                 : `Wacht op ${peer.author.name}`
             : `${firstName} kiest een collega`
+        }
+      />
+      <StatusCard
+        icon={<ArrowUp className="h-4 w-4" />}
+        title="Upward feedback"
+        status={upwardSubmitted ? "done" : upwardHasContent ? "draft" : "empty"}
+        line={
+          upwardSubmitted
+            ? `${firstName} heeft feedback gegeven`
+            : upwardHasContent
+              ? "Concept, zichtbaar na afronding"
+              : "Geen feedback gegeven"
         }
       />
       <StatusCard
@@ -457,6 +485,54 @@ function PeerFeedbackCard({
           <p className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
             We wachten nog op {peer.author.name}.
           </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function UpwardFeedbackCard({
+  questions,
+  upward,
+  employeeName,
+}: {
+  questions: TemplateQuestion[];
+  upward: CycleInputs["upward"];
+  employeeName: string;
+}) {
+  const hasContent =
+    !!upward &&
+    Object.values(upward.responses).some(
+      (v) => typeof v === "string" && v.trim().length > 0,
+    );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ArrowUp className="h-4 w-4 text-blue-500" />
+          Upward feedback van {employeeName}
+        </CardTitle>
+        <p className="text-[12.5px] text-muted-foreground">
+          Feedback die {employeeName.split(" ")[0]} jou heeft meegegeven als
+          onderdeel van de voorbereiding.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {!hasContent || !upward ? (
+          <p className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
+            {employeeName.split(" ")[0]} heeft geen upward feedback gegeven.
+          </p>
+        ) : questions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Upward-template niet beschikbaar.
+          </p>
+        ) : (
+          <TemplateAnswers
+            questions={questions}
+            answers={upward.responses}
+            emptyLabel="Geen vragen ingevuld."
+          />
         )}
       </CardContent>
     </Card>

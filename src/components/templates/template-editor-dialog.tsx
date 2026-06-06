@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 const TYPE_OPTIONS: TemplateType[] = [
   "peer_feedback",
   "peer_360",
+  "upward_feedback",
   "one_on_one",
   "evaluation",
 ];

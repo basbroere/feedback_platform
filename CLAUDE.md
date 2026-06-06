@@ -6,6 +6,7 @@ Werkinstructie voor Claude Code in deze repository. Dit bestand wordt automatisc
 
 ---
 
+
 ## Over dit project
 
 **Bamback** is een feedback- en gesprekkenplatform voor **Bambelo** (online leadgeneratie, hoofdkantoor Breda). Onderdeel van een scriptie-onderzoek naar feedbackcultuur. De scriptie-aanbeveling is een opvolger voor 15Five, dat eerder werd ingezet maar weghaalde wegens te veel administratie en te strenge deadlines. Tegelijk werd 15Five gemist; mensen vonden de gestructureerde gesprekken waardevol.

@@ -20,6 +20,7 @@ const TYPE_ACCENT: Record<TemplateType, string> = {
   evaluation: "bg-amber-400",
   peer_360: "bg-emerald-500",
   peer_feedback: "bg-violet-500",
+  upward_feedback: "bg-teal-500",
 };
 
 const TYPE_COLOR: Record<TemplateType, string> = {
@@ -33,6 +34,8 @@ const TYPE_COLOR: Record<TemplateType, string> = {
     "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800",
   peer_feedback:
     "bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:ring-violet-800",
+  upward_feedback:
+    "bg-teal-50 text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800",
 };
 
 const KIND_LABEL: Record<string, string> = {

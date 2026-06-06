@@ -16,6 +16,7 @@ const SOURCE_BORDER: Record<FeedbackSource, string> = {
   one_on_one: "border-l-4 border-l-blue-400 dark:border-l-blue-500",
   performance_review: "border-l-4 border-l-amber-400 dark:border-l-amber-500",
   peer_request: "border-l-4 border-l-violet-400 dark:border-l-violet-500",
+  upward_feedback: "border-l-4 border-l-emerald-400 dark:border-l-emerald-500",
 };
 
 type FilterKey = "all" | "one_on_one" | "performance_review" | "cross_team";

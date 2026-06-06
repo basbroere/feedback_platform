@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  ArrowUp,
   CalendarClock,
   Check,
   MessageSquareText,
@@ -128,8 +129,8 @@ export function PerformanceReviewScheduledView({
         Gesprek ingepland voor {formatDateTime(review.scheduled_at ?? "")}. Alle input staat hieronder klaar.
       </div>
 
-      {/* 3-kolommen feedbackoverzicht */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* 4-kolommen feedbackoverzicht */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <FeedbackColumn
           icon={<UserCircle2 className="h-4 w-4 text-blue-500" />}
           title={`Zelfreflectie ${review.employee.name.split(" ")[0]}`}
@@ -162,6 +163,23 @@ export function PerformanceReviewScheduledView({
             <Empty>
               {cycleInputs.peer.author.name} heeft nog niet gereageerd.
             </Empty>
+          )}
+        </FeedbackColumn>
+
+        <FeedbackColumn
+          icon={<ArrowUp className="h-4 w-4 text-emerald-500" />}
+          title="Upward feedback"
+        >
+          {cycleInputs.upward &&
+          Object.values(cycleInputs.upward.responses).some(
+            (v) => typeof v === "string" && v.trim().length > 0,
+          ) ? (
+            <Empty>
+              {review.employee.name.split(" ")[0]} heeft feedback meegegeven.
+              Zichtbaar nadat je het gesprek afrondt.
+            </Empty>
+          ) : (
+            <Empty>Geen upward feedback gegeven.</Empty>
           )}
         </FeedbackColumn>
 
@@ -261,11 +279,8 @@ export function PerformanceReviewScheduledView({
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => persist(false)} disabled={isPending}>
-          {isPending ? "Bezig..." : "Opslaan"}
-        </Button>
-        <Button variant="secondary" onClick={() => persist(true)} disabled={isPending}>
-          Gesprek afronden
+        <Button onClick={() => persist(true)} disabled={isPending}>
+          {isPending ? "Bezig..." : "Gesprek afronden"}
         </Button>
         {savedAt && (
           <span className="text-sm text-muted-foreground">Opgeslagen.</span>

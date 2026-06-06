@@ -19,6 +19,12 @@ export type PerformanceReviewTemplate = {
   questions: TemplateQuestion[];
 };
 
+export type UpwardFeedbackTemplate = {
+  id: string;
+  name: string;
+  questions: TemplateQuestion[];
+};
+
 export type PerformanceReviewListItem = {
   id: string;
   status: PerformanceReviewStatus;
@@ -86,4 +92,5 @@ export type CycleFeedback = {
 export type CycleInputs = {
   peer: CycleFeedback | null;
   manager: CycleFeedback | null;
+  upward: CycleFeedback | null;
 };

@@ -6,9 +6,11 @@ import {
   getCycleInputs,
   getPerformanceReviewForEmployee,
 } from "@/lib/performance-reviews/queries";
+import { getDefaultUpwardFeedbackTemplate } from "@/lib/performance-reviews/template";
 import { getTemplateById } from "@/lib/one-on-ones/template";
 import { PerformanceReviewPreparationForm } from "@/components/performance-review/preparation-form";
 import { CyclePeerPicker } from "@/components/performance-review/cycle-peer-picker";
+import { UpwardFeedbackForm } from "@/components/performance-review/upward-feedback-form";
 import { FinalizePreparationButton } from "@/components/performance-review/finalize-preparation-button";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { formatDate } from "@/lib/format";
@@ -30,10 +32,11 @@ export default async function VoorbereidenPerformanceReviewPage({
     review.status === "ready_for_meeting" ||
     review.status === "completed";
 
-  const [template, cycleInputs, teams] = await Promise.all([
+  const [template, cycleInputs, teams, upwardTemplate] = await Promise.all([
     review.template_id ? getTemplateById(review.template_id) : Promise.resolve(null),
     getCycleInputs(review.id),
     listTeamsWithMembers(),
+    getDefaultUpwardFeedbackTemplate(),
   ]);
 
   const hasEval = Object.values(review.employee_self_evaluation ?? {}).some(
@@ -108,6 +111,24 @@ export default async function VoorbereidenPerformanceReviewPage({
           template={template}
           initialAnswers={review.employee_self_evaluation ?? {}}
           redirectTo={undefined}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <header className="space-y-1">
+          <h2 className="text-[15px] font-semibold tracking-tight">
+            Feedback aan {review.manager.name.split(" ")[0]}
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            Optioneel: geef je manager feedback. Met je naam erbij, en pas
+            zichtbaar nadat het gesprek is afgerond. Sla op om je antwoorden
+            tussentijds te bewaren.
+          </p>
+        </header>
+        <UpwardFeedbackForm
+          performanceReviewId={review.id}
+          template={upwardTemplate}
+          initialAnswers={cycleInputs.upward?.responses ?? {}}
         />
       </section>
 

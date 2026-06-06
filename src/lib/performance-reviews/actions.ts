@@ -207,6 +207,25 @@ export async function saveManagerPerformanceReviewMeeting(input: {
     .eq("id", input.performanceReviewId);
   if (updErr) throw new Error(updErr.message);
 
+  // Bij afronding: upward feedback (medewerker -> manager) wordt nu pas
+  // zichtbaar voor de manager. Promoot eventuele concept-rij naar 'submitted'.
+  if (input.complete) {
+    const now = new Date().toISOString();
+    const { data: upwardRow } = await supabase
+      .from("feedback")
+      .select("id, status")
+      .eq("source_type", "upward_feedback")
+      .eq("source_id", input.performanceReviewId)
+      .eq("author_id", row.employee_id)
+      .maybeSingle();
+    if (upwardRow?.id && upwardRow.status === "requested") {
+      await supabase
+        .from("feedback")
+        .update({ status: "submitted", submitted_at: now })
+        .eq("id", upwardRow.id);
+    }
+  }
+
   for (const upd of input.actionItemUpdates) {
     const completedAt =
       upd.status === "completed" ? new Date().toISOString() : null;
@@ -364,6 +383,92 @@ export async function removeCyclePeer(input: {
   );
 }
 
+// Medewerker schrijft upward feedback over zijn manager. Optioneel onderdeel
+// van de voorbereiding. Status blijft 'requested' tot de cyclus is afgerond;
+// dan promoot saveManagerPerformanceReviewMeeting (met complete=true) deze
+// rij naar 'submitted' zodat de manager hem te zien krijgt. Zo blijft de
+// inhoud verborgen tot afronding.
+export async function saveUpwardFeedback(input: {
+  performanceReviewId: string;
+  responses: Record<string, string>;
+}): Promise<{ feedbackId: string | null }> {
+  const employeeId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, employee_id, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.employee_id !== employeeId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at)
+    throw new Error("Dit functioneringsgesprek is al afgerond");
+
+  const cleaned: Record<string, string> = {};
+  for (const [k, v] of Object.entries(input.responses ?? {})) {
+    if (typeof v === "string" && v.trim().length > 0) {
+      cleaned[k] = v.trim();
+    }
+  }
+
+  const { data: existing } = await supabase
+    .from("feedback")
+    .select("id")
+    .eq("source_type", "upward_feedback")
+    .eq("source_id", input.performanceReviewId)
+    .eq("author_id", employeeId)
+    .maybeSingle();
+
+  // Lege inzending: verwijder een bestaande concept-rij zodat de statuskaart
+  // weer op 'nog niet ingevuld' staat.
+  if (Object.keys(cleaned).length === 0) {
+    if (existing?.id) {
+      await supabase.from("feedback").delete().eq("id", existing.id);
+    }
+    revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+    revalidatePath(
+      `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+    );
+    return { feedbackId: null };
+  }
+
+  const now = new Date().toISOString();
+  let feedbackId: string;
+
+  if (existing?.id) {
+    const { error: updErr } = await supabase
+      .from("feedback")
+      .update({ responses: cleaned })
+      .eq("id", existing.id);
+    if (updErr) throw new Error(updErr.message);
+    feedbackId = existing.id;
+  } else {
+    const { data, error } = await supabase
+      .from("feedback")
+      .insert({
+        recipient_id: pr.manager_id,
+        author_id: employeeId,
+        source_type: "upward_feedback" as const,
+        source_id: input.performanceReviewId,
+        responses: cleaned,
+        status: "requested" as const,
+        requested_at: now,
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error(error?.message ?? "Opslaan mislukt");
+    feedbackId = data.id;
+  }
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath(
+    `/functioneringsgesprek/${input.performanceReviewId}/voorbereiden`,
+  );
+  return { feedbackId };
+}
+
 // Manager vult zelf het 360-template in en bewaart of submit het direct.
 // Opslaan als concept (status='requested') mag ook; submit zet de status op
 // 'submitted' en stuurt notificatie naar de medewerker.
@@ -502,6 +607,41 @@ async function maybeAdvanceToReadyForMeeting(
       .update({ status: "ready_for_meeting" as const })
       .eq("id", prId);
   }
+}
+
+// Manager besluit het gesprek nu te starten, ook al is nog niet alle input
+// binnen. Forceert de cyclus naar 'ready_for_meeting' zodat de gespreks-UI
+// beschikbaar wordt. Bedoeld voor situaties waar wachten op de laatste peer
+// of upward feedback geen nut meer heeft.
+export async function forceStartPerformanceReviewMeeting(input: {
+  performanceReviewId: string;
+}): Promise<void> {
+  const managerId = await requirePersonaId();
+  const supabase = await createClient();
+
+  const { data: pr, error: prErr } = await supabase
+    .from("performance_reviews")
+    .select("id, manager_id, status, completed_at")
+    .eq("id", input.performanceReviewId)
+    .maybeSingle();
+  if (prErr || !pr) throw new Error("Functioneringsgesprek niet gevonden");
+  if (pr.manager_id !== managerId)
+    throw new Error("Niet jouw functioneringsgesprek");
+  if (pr.completed_at) throw new Error("Dit gesprek is al afgerond");
+  if (pr.status === "cancelled") throw new Error("Dit gesprek is geannuleerd");
+  if (pr.status === "ready_for_meeting" || pr.status === "completed") {
+    return;
+  }
+
+  const { error: updErr } = await supabase
+    .from("performance_reviews")
+    .update({ status: "ready_for_meeting" as const })
+    .eq("id", input.performanceReviewId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/functioneringsgesprek/${input.performanceReviewId}`);
+  revalidatePath("/functioneringsgesprek");
+  revalidatePath("/dashboard");
 }
 
 // Manager plant een datum voor het gesprek. Vereist status 'ready_for_meeting'.

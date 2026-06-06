@@ -457,9 +457,10 @@ export async function listScheduledPerformanceReviewsForManager(
     .filter((r): r is PerformanceReviewListItem => r !== null);
 }
 
-// Haalt de peer- en manager-feedback-rijen op die bij deze cyclus horen.
+// Haalt peer-, manager- en upward-feedback-rijen op die bij deze cyclus horen.
 // Peer = author die niet de manager en niet de medewerker is.
 // Manager = author die de manager_id van de cyclus is.
+// Upward = source_type 'upward_feedback' met author = medewerker, recipient = manager.
 // hideUntilManagerSubmits: als true, wordt peer-rij verborgen als manager nog niet submitted heeft.
 export async function getCycleInputs(
   performanceReviewId: string,
@@ -471,19 +472,20 @@ export async function getCycleInputs(
     .select("manager_id, employee_id")
     .eq("id", performanceReviewId)
     .maybeSingle();
-  if (!pr) return { peer: null, manager: null };
+  if (!pr) return { peer: null, manager: null, upward: null };
 
   const { data } = await supabase
     .from("feedback")
     .select(
-      `id, author_id, status, responses, submitted_at, is_cross_team, created_at, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
+      `id, source_type, author_id, status, responses, submitted_at, is_cross_team, created_at, author:users!feedback_author_id_fkey(${PERSON_COLS})`,
     )
-    .eq("source_type", "performance_review")
+    .in("source_type", ["performance_review", "upward_feedback"])
     .eq("source_id", performanceReviewId)
     .order("created_at", { ascending: false });
 
   type Row = {
     id: string;
+    source_type: "performance_review" | "upward_feedback";
     author_id: string;
     status: FeedbackStatus;
     responses: Record<string, string> | null;
@@ -497,13 +499,24 @@ export async function getCycleInputs(
 
   const managerRow =
     rows.find(
-      (r) => r.author_id === pr.manager_id && r.status !== "declined",
+      (r) =>
+        r.source_type === "performance_review" &&
+        r.author_id === pr.manager_id &&
+        r.status !== "declined",
     ) ?? null;
   const peerRow =
     rows.find(
       (r) =>
+        r.source_type === "performance_review" &&
         r.author_id !== pr.manager_id &&
         r.author_id !== pr.employee_id &&
+        r.status !== "declined",
+    ) ?? null;
+  const upwardRow =
+    rows.find(
+      (r) =>
+        r.source_type === "upward_feedback" &&
+        r.author_id === pr.employee_id &&
         r.status !== "declined",
     ) ?? null;
 
@@ -522,10 +535,14 @@ export async function getCycleInputs(
   const managerHasSubmitted = managerRow?.status === "submitted";
 
   if (options?.hideUntilManagerSubmits && !managerHasSubmitted) {
-    return { peer: null, manager: toCycle(managerRow) };
+    return { peer: null, manager: toCycle(managerRow), upward: toCycle(upwardRow) };
   }
 
-  return { peer: toCycle(peerRow), manager: toCycle(managerRow) };
+  return {
+    peer: toCycle(peerRow),
+    manager: toCycle(managerRow),
+    upward: toCycle(upwardRow),
+  };
 }
 
 export async function listOpenPerformanceReviewsForManager(

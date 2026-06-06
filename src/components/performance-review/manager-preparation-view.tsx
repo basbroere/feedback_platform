@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowUp,
   CalendarClock,
   CheckCircle2,
   Clock3,
@@ -27,6 +28,7 @@ import type {
 } from "@/lib/performance-reviews/types";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { RatingBInput } from "@/components/templates/rating-input";
+import { StartMeetingButton } from "./start-meeting-button";
 import { TemplateAnswers } from "./template-answers";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,16 @@ export function ManagerPreparationView({
   const hasSelfEval = Object.values(review.employee_self_evaluation).some(
     (v) => typeof v === "string" && v.trim().length > 0,
   );
+
+  const peerSubmitted = cycleInputs.peer?.status === "submitted";
+  const peerDeclined = cycleInputs.peer?.status === "declined";
+  const peerResolved = peerSubmitted || peerDeclined;
+
+  const firstName = review.employee.name.split(" ")[0];
+  const missingInputs: string[] = [];
+  if (!hasSelfEval) missingInputs.push(`Zelfreflectie van ${firstName}`);
+  if (!peerResolved) missingInputs.push("Peer-feedback");
+  if (!managerHasSubmitted) missingInputs.push("Jouw eigen feedback");
 
   return (
     <div className="space-y-6">
@@ -98,6 +110,19 @@ export function ManagerPreparationView({
       ) : (
         <LockedInputsNotice employeeName={review.employee.name} />
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="space-y-0.5">
+          <p className="text-[14px] font-semibold">Klaar om te beginnen?</p>
+          <p className="text-[12.5px] text-muted-foreground">
+            Start het gesprek nu, ook als nog niet alle input binnen is.
+          </p>
+        </div>
+        <StartMeetingButton
+          performanceReviewId={review.id}
+          missingInputs={missingInputs}
+        />
+      </div>
     </div>
   );
 }
@@ -116,14 +141,24 @@ function PreparationStatusGrid({
   const firstName = employeeName.split(" ")[0];
   const peer = cycleInputs.peer;
   const manager = cycleInputs.manager;
+  const upward = cycleInputs.upward;
+  const upwardHasContent =
+    !!upward &&
+    Object.values(upward.responses).some(
+      (v) => typeof v === "string" && v.trim().length > 0,
+    );
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
       <StatusCard
         icon={<UserCircle2 className="h-4 w-4" />}
         title="Zelfreflectie"
         status={hasSelfEval ? "done" : "waiting"}
-        line={hasSelfEval ? `${firstName} heeft ingevuld` : `Wacht op ${firstName}`}
+        line={
+          hasSelfEval
+            ? `${firstName} heeft ingevuld`
+            : `Wacht op ${firstName}`
+        }
       />
       <StatusCard
         icon={<Users className="h-4 w-4" />}
@@ -143,12 +178,30 @@ function PreparationStatusGrid({
           managerHasSubmitted
             ? peer
               ? peer.status === "submitted"
-                ? `${peer.author.name} heeft gegeven`
+                ? `${peer.author.name} heeft ingevuld`
                 : peer.status === "declined"
-                  ? `${peer.author.name} ziet af`
+                  ? `${peer.author.name} heeft afgezien`
                   : `Wacht op ${peer.author.name}`
-              : `${firstName} kiest een collega`
-            : "Zichtbaar na jouw inzending"
+              : `Wacht op keuze van ${firstName}`
+            : "Verborgen tot jouw inzending"
+        }
+      />
+      <StatusCard
+        icon={<ArrowUp className="h-4 w-4" />}
+        title="Upward feedback"
+        status={
+          managerHasSubmitted
+            ? upwardHasContent
+              ? "locked"
+              : "empty"
+            : "locked"
+        }
+        line={
+          managerHasSubmitted
+            ? upwardHasContent
+              ? "Verborgen tot afronding"
+              : "Geen feedback gegeven"
+            : "Verborgen tot jouw inzending"
         }
       />
       <StatusCard
@@ -159,10 +212,10 @@ function PreparationStatusGrid({
         }
         line={
           managerHasSubmitted
-            ? "Verstuurd"
+            ? `Verstuurd naar ${firstName}`
             : manager
               ? "Concept opgeslagen"
-              : "Nog niet gegeven"
+              : "Wacht op jouw inzending"
         }
       />
     </div>
@@ -357,13 +410,6 @@ function ManagerCycleFeedbackCard({
 
         {!submitted && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => save(false)}
-              disabled={isPending}
-              variant="ghost"
-            >
-              Concept opslaan
-            </Button>
             <Button onClick={() => save(true)} disabled={isPending}>
               {isPending ? "Bezig..." : "Versturen"}
             </Button>
