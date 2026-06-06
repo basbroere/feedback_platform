@@ -103,8 +103,17 @@ function buildTodos(data: DashboardData): TodoItem[] {
 
 function buildAgenda(data: DashboardData): AgendaRow[] {
   const rows: AgendaRow[] = [];
+  const isManager = data.persona.role === "manager";
+  const twoWeeksFromNow = isManager
+    ? Date.now() + 14 * 24 * 60 * 60 * 1000
+    : null;
+  const withinTwoWeeks = (iso: string | null) => {
+    if (twoWeeksFromNow === null) return true;
+    if (!iso) return false;
+    return new Date(iso).getTime() <= twoWeeksFromNow;
+  };
 
-  if (data.upcoming) {
+  if (data.upcoming && withinTwoWeeks(data.upcoming.scheduled_at)) {
     rows.push({
       key: data.upcoming.id,
       personId: data.persona.id,
@@ -117,6 +126,7 @@ function buildAgenda(data: DashboardData): AgendaRow[] {
   }
 
   for (const m of data.managerUpcoming) {
+    if (!withinTwoWeeks(m.scheduled_at)) continue;
     rows.push({
       key: m.id,
       personId: m.employee.id,
@@ -128,16 +138,18 @@ function buildAgenda(data: DashboardData): AgendaRow[] {
     });
   }
 
-  for (const r of data.managerOpenPerformanceReviews) {
-    rows.push({
-      key: `pr-${r.id}`,
-      personId: r.employee.id,
-      personName: r.employee.name,
-      avatarUrl: r.employee.avatar_url,
-      date: "Lopend",
-      type: "Functionering",
-      href: `/functioneringsgesprek/${r.id}`,
-    });
+  if (!isManager) {
+    for (const r of data.managerOpenPerformanceReviews) {
+      rows.push({
+        key: `pr-${r.id}`,
+        personId: r.employee.id,
+        personName: r.employee.name,
+        avatarUrl: r.employee.avatar_url,
+        date: "Lopend",
+        type: "Functionering",
+        href: `/functioneringsgesprek/${r.id}`,
+      });
+    }
   }
 
   return rows;
