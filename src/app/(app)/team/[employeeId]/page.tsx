@@ -14,7 +14,8 @@ import {
 import { getDossierForEmployee } from "@/lib/action-items/queries";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { ScheduleDialog } from "@/components/one-on-one/schedule-dialog";
-import { listActivePerformanceReviewTemplates } from "@/lib/performance-reviews/template";
+import { listActivePerformanceReviewBundles } from "@/lib/performance-reviews/template";
+import { listActiveOneOnOneTemplates } from "@/lib/templates/queries";
 import { StartPerformanceReviewDialog } from "@/components/performance-review/start-dialog";
 import { listPerformanceReviewsBetween } from "@/lib/performance-reviews/queries";
 import { getFeedbackForEmployee } from "@/lib/feedback/queries";
@@ -52,12 +53,14 @@ export default async function TeamMemberPage({
     dossier,
     performanceReviews,
     prTemplates,
+    oneOnOneTemplates,
     feedbackItems,
   ] = await Promise.all([
     listOneOnOnesForPair(persona.id, employeeId),
     getDossierForEmployee(employeeId),
     listPerformanceReviewsBetween(persona.id, employeeId),
-    listActivePerformanceReviewTemplates(),
+    listActivePerformanceReviewBundles(),
+    listActiveOneOnOneTemplates(),
     getFeedbackForEmployee(employeeId),
   ]);
 
@@ -109,6 +112,7 @@ export default async function TeamMemberPage({
           <ScheduleDialog
             employeeId={member.id}
             employeeName={member.name}
+            templates={oneOnOneTemplates}
             triggerLabel="Nieuwe 1-op-1 inplannen"
             triggerVariant="default"
           />

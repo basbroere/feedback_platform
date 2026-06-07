@@ -53,7 +53,7 @@ import type {
   PerformanceReviewFull,
 } from "@/lib/performance-reviews/types";
 import type { FeedbackWithSource } from "@/lib/feedback/types";
-import { FeedbackRow } from "@/components/feedback/feedback-view";
+import { MemberFeedbackTable } from "@/components/team/member-feedback-table";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { RatingBInput } from "@/components/templates/rating-input";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -65,7 +65,9 @@ type Status = "open" | "completed" | "expired";
 
 export function PerformanceReviewMeetingView({
   review,
-  questions,
+  selfQuestions,
+  peerQuestions,
+  managerQuestions,
   upwardQuestions,
   cycleInputs,
   newActionItems,
@@ -75,7 +77,9 @@ export function PerformanceReviewMeetingView({
   windowEnd,
 }: {
   review: PerformanceReviewFull;
-  questions: TemplateQuestion[];
+  selfQuestions: TemplateQuestion[];
+  peerQuestions: TemplateQuestion[];
+  managerQuestions: TemplateQuestion[];
   upwardQuestions: TemplateQuestion[];
   cycleInputs: CycleInputs;
   newActionItems: ActionItem[];
@@ -198,7 +202,7 @@ export function PerformanceReviewMeetingView({
         </CardHeader>
         <CardContent>
           <TemplateAnswers
-            questions={questions}
+            questions={selfQuestions}
             answers={review.employee_self_evaluation}
             emptyLabel={`${review.employee.name} heeft nog niks ingevuld.`}
           />
@@ -206,13 +210,13 @@ export function PerformanceReviewMeetingView({
       </Card>
 
       <PeerFeedbackCard
-        questions={questions}
+        questions={peerQuestions}
         peer={cycleInputs.peer}
       />
 
       <ManagerCycleFeedbackCard
         performanceReviewId={review.id}
-        questions={questions}
+        questions={managerQuestions}
         existing={cycleInputs.manager}
         disabled={isCompleted}
       />
@@ -811,13 +815,7 @@ function ReceivedFeedbackBrowser({ items }: { items: FeedbackWithSource[] }) {
       </p>
     );
   }
-  return (
-    <ul className="space-y-3">
-      {items.map((f) => (
-        <FeedbackRow key={f.id} item={f} />
-      ))}
-    </ul>
-  );
+  return <MemberFeedbackTable items={items} hideToolbar />;
 }
 
 function NewActionItems({

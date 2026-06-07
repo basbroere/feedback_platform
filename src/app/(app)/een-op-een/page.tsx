@@ -9,6 +9,7 @@ import {
   getUpcomingOneOnOnesForManager,
   listOneOnOnesForPair,
 } from "@/lib/one-on-ones/queries";
+import { listActiveOneOnOneTemplates } from "@/lib/templates/queries";
 import { HistoryTable } from "@/components/one-on-one/history-table";
 import { ManagerTimeline } from "@/components/one-on-one/manager-timeline";
 import { ScheduleDialog } from "@/components/one-on-one/schedule-dialog";
@@ -22,10 +23,11 @@ export default async function EenOpEenIndex() {
   const persona = await requirePersona();
 
   if (persona.role === "manager") {
-    const [upcoming, recent, teamMembers] = await Promise.all([
+    const [upcoming, recent, teamMembers, templates] = await Promise.all([
       getUpcomingOneOnOnesForManager(persona.id, 50),
       getRecentCompletedOneOnOnesForManager(persona.id, 20),
       getTeamMembers(persona.id),
+      listActiveOneOnOneTemplates(),
     ]);
 
     const selectableMembers = teamMembers.map((m) => ({
@@ -49,6 +51,7 @@ export default async function EenOpEenIndex() {
             selectableMembers.length > 0 ? (
               <ScheduleDialog
                 teamMembers={selectableMembers}
+                templates={templates}
                 triggerLabel="Nieuwe 1-op-1"
                 triggerVariant="default"
               />

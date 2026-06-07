@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPersona } from "@/lib/persona/server";
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
-import type { TemplateType } from "./types";
+import {
+  PERFORMANCE_REVIEW_SECTION_KEYS,
+  type PerformanceReviewBundleSections,
+  type TemplateType,
+} from "./types";
 
 const ALLOWED_KINDS: TemplateQuestion["kind"][] = [
   "open",
@@ -67,17 +71,43 @@ function normalizeQuestions(input: unknown[]): TemplateQuestion[] {
   });
 }
 
+function normalizeSections(
+  raw: PerformanceReviewBundleSections | undefined,
+): PerformanceReviewBundleSections {
+  const out = {} as PerformanceReviewBundleSections;
+  for (const key of PERFORMANCE_REVIEW_SECTION_KEYS) {
+    const arr = raw?.[key] ?? [];
+    const cleaned = normalizeQuestions(arr);
+    if (cleaned.length === 0) {
+      throw new Error(
+        `Sectie '${key}' moet minstens één vraag bevatten voordat het template gepubliceerd kan worden.`,
+      );
+    }
+    out[key] = cleaned;
+  }
+  return out;
+}
+
 export async function createTemplate(input: {
   type: TemplateType;
   name: string;
   questions: TemplateQuestion[];
+  sections?: PerformanceReviewBundleSections;
 }): Promise<{ id: string }> {
   await requireAdmin();
   const name = input.name.trim();
   if (!name) throw new Error("Naam is verplicht");
-  const questions = normalizeQuestions(input.questions);
-  if (questions.length === 0)
-    throw new Error("Voeg minstens één vraag toe");
+
+  const isBundle = input.type === "performance_review_bundle";
+  let questions: TemplateQuestion[] = [];
+  let sections: PerformanceReviewBundleSections | null = null;
+  if (isBundle) {
+    sections = normalizeSections(input.sections);
+  } else {
+    questions = normalizeQuestions(input.questions);
+    if (questions.length === 0)
+      throw new Error("Voeg minstens één vraag toe");
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -86,6 +116,7 @@ export async function createTemplate(input: {
       type: input.type,
       name,
       questions,
+      sections,
       is_active: true,
     })
     .select("id")
@@ -100,18 +131,39 @@ export async function updateTemplate(input: {
   id: string;
   name: string;
   questions: TemplateQuestion[];
+  sections?: PerformanceReviewBundleSections;
 }): Promise<void> {
   await requireAdmin();
   const name = input.name.trim();
   if (!name) throw new Error("Naam is verplicht");
-  const questions = normalizeQuestions(input.questions);
-  if (questions.length === 0)
-    throw new Error("Voeg minstens één vraag toe");
 
   const supabase = await createClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("templates")
+    .select("type")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (fetchErr || !existing) throw new Error("Template niet gevonden");
+
+  const isBundle = existing.type === "performance_review_bundle";
+  const patch: {
+    name: string;
+    questions?: TemplateQuestion[];
+    sections?: PerformanceReviewBundleSections;
+  } = { name };
+  if (isBundle) {
+    patch.sections = normalizeSections(input.sections);
+    patch.questions = [];
+  } else {
+    const questions = normalizeQuestions(input.questions);
+    if (questions.length === 0)
+      throw new Error("Voeg minstens één vraag toe");
+    patch.questions = questions;
+  }
+
   const { error } = await supabase
     .from("templates")
-    .update({ name, questions })
+    .update(patch)
     .eq("id", input.id);
   if (error) throw new Error(error.message);
 

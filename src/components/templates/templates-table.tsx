@@ -11,12 +11,29 @@ import {
 } from "@/components/ui/dialog";
 import { TemplateEditorDialog } from "./template-editor-dialog";
 import { deleteTemplate, setTemplateActive } from "@/lib/templates/actions";
-import { TEMPLATE_TYPE_LABEL, type ManagedTemplate, type TemplateType } from "@/lib/templates/types";
+import {
+  PERFORMANCE_REVIEW_SECTION_KEYS,
+  PERFORMANCE_REVIEW_SECTION_LABEL,
+  TEMPLATE_TYPE_LABEL,
+  type ManagedTemplate,
+  type TemplateType,
+} from "@/lib/templates/types";
 import { cn } from "@/lib/utils";
+
+function totalQuestionCount(t: ManagedTemplate): number {
+  if (t.sections) {
+    return PERFORMANCE_REVIEW_SECTION_KEYS.reduce(
+      (sum, key) => sum + (t.sections?.[key]?.length ?? 0),
+      0,
+    );
+  }
+  return t.questions.length;
+}
 
 const TYPE_ACCENT: Record<TemplateType, string> = {
   one_on_one: "bg-blue-500",
   performance_review: "bg-purple-500",
+  performance_review_bundle: "bg-purple-500",
   evaluation: "bg-amber-400",
   peer_360: "bg-emerald-500",
   peer_feedback: "bg-violet-500",
@@ -27,6 +44,8 @@ const TYPE_COLOR: Record<TemplateType, string> = {
   one_on_one:
     "bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-800",
   performance_review:
+    "bg-purple-50 text-purple-700 ring-1 ring-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:ring-purple-800",
+  performance_review_bundle:
     "bg-purple-50 text-purple-700 ring-1 ring-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:ring-purple-800",
   evaluation:
     "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-800",
@@ -76,7 +95,7 @@ function TemplateRow({
         </span>
       </td>
       <td className="py-3 pr-4 text-[13px] text-muted-foreground tabular-nums">
-        {t.questions.length}
+        {totalQuestionCount(t)}
       </td>
       <td className="py-3 pr-4 text-right">
         <div className="inline-flex items-center gap-0.5">
@@ -94,6 +113,7 @@ function TemplateRow({
             initialName={t.name}
             initialType={t.type}
             initialQuestions={t.questions}
+            initialSections={t.sections}
             asMenuItem
           />
           <Button
@@ -172,6 +192,35 @@ function TemplateTable({
 }
 
 function TemplateDetailModal({ template: t, onClose }: { template: ManagedTemplate; onClose: () => void }) {
+  void onClose;
+  const total = totalQuestionCount(t);
+
+  function renderQuestion(q: import("@/lib/one-on-ones/types").TemplateQuestion, i: number) {
+    return (
+      <div key={q.id} className="rounded-xl border border-border/50 bg-muted/40 px-3.5 py-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            {i + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium leading-snug">{q.label}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {KIND_LABEL[q.kind] ?? q.kind}
+              {q.required ? " · Verplicht" : ""}
+            </p>
+            {q.options && q.options.length > 0 && (
+              <ul className="mt-1.5 space-y-0.5">
+                {q.options.map((opt, oi) => (
+                  <li key={oi} className="text-[11px] text-muted-foreground">{oi + 1}. {opt}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
       {/* Accent strip */}
@@ -184,7 +233,7 @@ function TemplateDetailModal({ template: t, onClose }: { template: ManagedTempla
             {TEMPLATE_TYPE_LABEL[t.type]}
           </span>
           <span className="text-[11px] text-muted-foreground">
-            {t.questions.length} {t.questions.length === 1 ? "vraag" : "vragen"}
+            {total} {total === 1 ? "vraag" : "vragen"}
             {t.usage_count > 0 ? ` · ${t.usage_count}x in gebruik` : ""}
             {!t.is_active ? " · Gearchiveerd" : ""}
           </span>
@@ -197,33 +246,35 @@ function TemplateDetailModal({ template: t, onClose }: { template: ManagedTempla
       <div className="mx-6 h-px shrink-0 bg-border/60" />
 
       {/* Questions list - scrollable */}
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
-        {t.questions.length === 0 ? (
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        {t.sections ? (
+          PERFORMANCE_REVIEW_SECTION_KEYS.map((key) => {
+            const sectionQuestions = t.sections?.[key] ?? [];
+            return (
+              <section key={key} className="space-y-2">
+                <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {PERFORMANCE_REVIEW_SECTION_LABEL[key]}
+                  <span className="ml-2 font-normal normal-case">
+                    {sectionQuestions.length}{" "}
+                    {sectionQuestions.length === 1 ? "vraag" : "vragen"}
+                  </span>
+                </h3>
+                {sectionQuestions.length === 0 ? (
+                  <p className="text-[12.5px] text-muted-foreground">
+                    Nog geen vragen in deze stap.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {sectionQuestions.map((q, i) => renderQuestion(q, i))}
+                  </div>
+                )}
+              </section>
+            );
+          })
+        ) : t.questions.length === 0 ? (
           <p className="py-4 text-center text-[13px] text-muted-foreground">Nog geen vragen in dit template.</p>
         ) : (
-          t.questions.map((q, i) => (
-            <div key={q.id} className="rounded-xl border border-border/50 bg-muted/40 px-3.5 py-3">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium leading-snug">{q.label}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {KIND_LABEL[q.kind] ?? q.kind}
-                    {q.required ? " · Verplicht" : ""}
-                  </p>
-                  {q.options && q.options.length > 0 && (
-                    <ul className="mt-1.5 space-y-0.5">
-                      {q.options.map((opt, oi) => (
-                        <li key={oi} className="text-[11px] text-muted-foreground">{oi + 1}. {opt}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))
+          t.questions.map((q, i) => renderQuestion(q, i))
         )}
       </div>
 
@@ -236,6 +287,7 @@ function TemplateDetailModal({ template: t, onClose }: { template: ManagedTempla
             initialName={t.name}
             initialType={t.type}
             initialQuestions={t.questions}
+            initialSections={t.sections}
             triggerLabel="Template bewerken"
           />
         </div>

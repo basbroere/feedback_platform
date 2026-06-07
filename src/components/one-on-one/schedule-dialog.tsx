@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createOneOnOne } from "@/lib/one-on-ones/actions";
 import type { PersonRef } from "@/lib/one-on-ones/types";
+import type { TemplateOption } from "@/lib/templates/queries";
+import { TemplatePreviewButton } from "@/components/templates/template-preview-button";
 import { cn } from "@/lib/utils";
 
 function defaultScheduledAt(): string {
@@ -31,27 +33,30 @@ function defaultScheduledAt(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+type CommonProps = {
+  templates: TemplateOption[];
+  triggerLabel?: string;
+  triggerVariant?: "default" | "outline" | "secondary" | "ghost";
+};
+
 type Props =
-  | {
+  | (CommonProps & {
       employeeId: string;
       employeeName: string;
       teamMembers?: undefined;
-      triggerLabel?: string;
-      triggerVariant?: "default" | "outline" | "secondary" | "ghost";
-    }
-  | {
+    })
+  | (CommonProps & {
       employeeId?: undefined;
       employeeName?: undefined;
       teamMembers: PersonRef[];
-      triggerLabel?: string;
-      triggerVariant?: "default" | "outline" | "secondary" | "ghost";
-    };
+    });
 
 export function ScheduleDialog(props: Props) {
   const {
     employeeId: fixedEmployeeId,
     employeeName: fixedEmployeeName,
     teamMembers,
+    templates,
     triggerLabel = "Nieuwe 1-op-1",
     triggerVariant = "outline",
   } = props;
@@ -62,8 +67,13 @@ export function ScheduleDialog(props: Props) {
     fixedEmployeeId ?? teamMembers?.[0]?.id ?? "",
   );
   const [value, setValue] = useState(defaultScheduledAt());
+  const [templateId, setTemplateId] = useState<string>(
+    templates[0]?.id ?? "",
+  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const selectedTemplate = templates.find((t) => t.id === templateId) ?? null;
 
   const targetName =
     fixedEmployeeName ??
@@ -87,6 +97,7 @@ export function ScheduleDialog(props: Props) {
         const { id } = await createOneOnOne({
           employeeId,
           scheduledAt: iso,
+          templateId: templateId || null,
         });
         setOpen(false);
         router.push(`/een-op-een/${id}`);
@@ -150,6 +161,38 @@ export function ScheduleDialog(props: Props) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="one-on-one-template">Template</Label>
+              {selectedTemplate ? (
+                <TemplatePreviewButton
+                  name={selectedTemplate.name}
+                  questions={selectedTemplate.questions}
+                />
+              ) : null}
+            </div>
+            <select
+              id="one-on-one-template"
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value)}
+              disabled={templates.length === 0}
+              className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {templates.length === 0 ? (
+                <option value="">Geen template beschikbaar</option>
+              ) : (
+                templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="text-[12.5px] text-muted-foreground">
+              Vragen zijn suggesties. Aanpassen kan later in het gesprek.
+            </p>
           </div>
 
           {!fixedEmployeeName && selectedEmployeeId ? (

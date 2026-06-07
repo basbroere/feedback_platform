@@ -6,8 +6,7 @@ import {
   getCycleInputs,
   getPerformanceReviewForEmployee,
 } from "@/lib/performance-reviews/queries";
-import { getDefaultUpwardFeedbackTemplate } from "@/lib/performance-reviews/template";
-import { getTemplateById } from "@/lib/one-on-ones/template";
+import { getPerformanceReviewBundleById } from "@/lib/performance-reviews/template";
 import { PerformanceReviewPreparationForm } from "@/components/performance-review/preparation-form";
 import { CyclePeerPicker } from "@/components/performance-review/cycle-peer-picker";
 import { UpwardFeedbackForm } from "@/components/performance-review/upward-feedback-form";
@@ -26,18 +25,34 @@ export default async function VoorbereidenPerformanceReviewPage({
   if (!review) notFound();
   if (review.completed_at) redirect(`/functioneringsgesprek/${id}`);
 
-  const [template, cycleInputs, teams, upwardTemplate] = await Promise.all([
-    review.template_id ? getTemplateById(review.template_id) : Promise.resolve(null),
+  const [bundle, cycleInputs, teams] = await Promise.all([
+    review.template_id
+      ? getPerformanceReviewBundleById(review.template_id)
+      : Promise.resolve(null),
     getCycleInputs(review.id),
     listTeamsWithMembers(),
-    getDefaultUpwardFeedbackTemplate(),
   ]);
+
+  const selfReflection = bundle
+    ? {
+        id: bundle.id,
+        name: bundle.name,
+        questions: bundle.sections.self_reflection,
+      }
+    : null;
+  const upwardTemplate = bundle
+    ? {
+        id: bundle.id,
+        name: bundle.name,
+        questions: bundle.sections.upward,
+      }
+    : null;
 
   const selfAnswers = review.employee_self_evaluation ?? {};
   const selfAnsweredCount = Object.values(selfAnswers).filter(
     (v) => typeof v === "string" && v.trim().length > 0,
   ).length;
-  const selfTotal = template?.questions.length ?? 0;
+  const selfTotal = selfReflection?.questions.length ?? 0;
 
   const upwardAnswers = cycleInputs.upward?.responses ?? {};
   const upwardAnsweredCount = Object.values(upwardAnswers).filter(
@@ -101,7 +116,7 @@ export default async function VoorbereidenPerformanceReviewPage({
       >
         <PerformanceReviewPreparationForm
           performanceReviewId={review.id}
-          template={template}
+          template={selfReflection}
           initialAnswers={selfAnswers}
           redirectTo={undefined}
         />

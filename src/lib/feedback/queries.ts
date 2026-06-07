@@ -125,23 +125,40 @@ export async function getFeedbackForEmployee(
 
   const performanceReviewById = new Map<
     string,
-    { template: FeedbackTemplate | null }
+    {
+      managerId: string;
+      templateName: string | null;
+      templateId: string | null;
+      templateType: string | null;
+      templateQuestions: TemplateQuestion[];
+      sections: Record<string, TemplateQuestion[]> | null;
+    }
   >();
   if (performanceReviewIds.length) {
     const { data: prRows } = await supabase
       .from("performance_reviews")
-      .select(`id, template:templates(id, name, questions)`)
+      .select(
+        `id, manager_id, template:templates(id, name, type, questions, sections)`,
+      )
       .in("id", performanceReviewIds);
-    type Row = { id: string; template: TemplateRow | null };
+    type Row = {
+      id: string;
+      manager_id: string;
+      template:
+        | (TemplateRow & {
+            type: string;
+            sections: Record<string, TemplateQuestion[]> | null;
+          })
+        | null;
+    };
     for (const raw of (prRows ?? []) as unknown as Row[]) {
       performanceReviewById.set(raw.id, {
-        template: raw.template
-          ? {
-              id: raw.template.id,
-              name: raw.template.name,
-              questions: raw.template.questions ?? [],
-            }
-          : null,
+        managerId: raw.manager_id,
+        templateName: raw.template?.name ?? null,
+        templateId: raw.template?.id ?? null,
+        templateType: raw.template?.type ?? null,
+        templateQuestions: (raw.template?.questions ?? []) as TemplateQuestion[],
+        sections: raw.template?.sections ?? null,
       });
     }
   }
@@ -169,15 +186,27 @@ export async function getFeedbackForEmployee(
       };
     } else if (f.source_type === "performance_review") {
       const pr = f.source_id ? performanceReviewById.get(f.source_id) : null;
-      templateQuestions = pr?.template?.questions;
+      if (pr?.templateType === "performance_review_bundle") {
+        const sectionKey =
+          f.author_id === pr.managerId ? "manager_prep" : "peer_360";
+        templateQuestions = (pr.sections?.[sectionKey] ?? []) as TemplateQuestion[];
+      } else {
+        templateQuestions = pr?.templateQuestions;
+      }
       source = {
         kind: "performance_review",
-        label: pr?.template?.name ?? "Functioneringsgesprek",
+        label: pr?.templateName ?? "Functioneringsgesprek",
         href: null,
         date: null,
         with: null,
       };
     } else if (f.source_type === "upward_feedback") {
+      const pr = f.source_id ? performanceReviewById.get(f.source_id) : null;
+      if (pr?.templateType === "performance_review_bundle") {
+        templateQuestions = (pr.sections?.upward ?? []) as TemplateQuestion[];
+      } else if (pr?.templateType === "upward_feedback") {
+        templateQuestions = pr.templateQuestions;
+      }
       source = {
         kind: "upward_feedback",
         label: "Upward feedback uit functioneringsgesprek",
@@ -346,11 +375,34 @@ export async function getFeedbackRequestDetailForPeer(
   if (row.source_type === "performance_review") {
     const { data: pr } = await supabase
       .from("performance_reviews")
-      .select(`id, template:templates(id, name, questions)`)
+      .select(
+        `id, manager_id, template:templates(id, name, type, questions, sections)`,
+      )
       .eq("id", row.source_id)
       .maybeSingle();
-    type PrRow = { id: string; template: TemplateRow | null };
+    type PrTemplateRow = TemplateRow & {
+      type: string;
+      sections: Record<string, TemplateQuestion[]> | null;
+    };
+    type PrRow = {
+      id: string;
+      manager_id: string;
+      template: PrTemplateRow | null;
+    };
     const prRow = pr as unknown as PrRow | null;
+
+    let questions: TemplateQuestion[] = [];
+    if (prRow?.template) {
+      if (prRow.template.type === "performance_review_bundle") {
+        // Manager schrijft op manager_prep-sectie, peer op peer_360.
+        const sectionKey =
+          peerId === prRow.manager_id ? "manager_prep" : "peer_360";
+        questions = (prRow.template.sections?.[sectionKey] ?? []) as TemplateQuestion[];
+      } else {
+        questions = prRow.template.questions ?? [];
+      }
+    }
+
     return {
       feedback: row,
       requester: row.recipient,
@@ -359,7 +411,7 @@ export async function getFeedbackRequestDetailForPeer(
         ? {
             id: prRow.template.id,
             name: prRow.template.name,
-            questions: prRow.template.questions ?? [],
+            questions,
           }
         : null,
       source_kind: "performance_review",
