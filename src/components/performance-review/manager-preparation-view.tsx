@@ -401,6 +401,11 @@ function ManagerCycleFeedbackCard({
                     <span className="ml-1 text-muted-foreground">*</span>
                   ) : null}
                 </Label>
+                {q.hint ? (
+                  <p className="text-[12.5px] text-muted-foreground">
+                    {q.hint}
+                  </p>
+                ) : null}
                 {q.kind === "rating_b_1_5" ? (
                   <RatingBInput
                     id={`mgr-${q.id}`}
