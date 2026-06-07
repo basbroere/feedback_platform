@@ -346,11 +346,34 @@ export async function getFeedbackRequestDetailForPeer(
   if (row.source_type === "performance_review") {
     const { data: pr } = await supabase
       .from("performance_reviews")
-      .select(`id, template:templates(id, name, questions)`)
+      .select(
+        `id, manager_id, template:templates(id, name, type, questions, sections)`,
+      )
       .eq("id", row.source_id)
       .maybeSingle();
-    type PrRow = { id: string; template: TemplateRow | null };
+    type PrTemplateRow = TemplateRow & {
+      type: string;
+      sections: Record<string, TemplateQuestion[]> | null;
+    };
+    type PrRow = {
+      id: string;
+      manager_id: string;
+      template: PrTemplateRow | null;
+    };
     const prRow = pr as unknown as PrRow | null;
+
+    let questions: TemplateQuestion[] = [];
+    if (prRow?.template) {
+      if (prRow.template.type === "performance_review_bundle") {
+        // Manager schrijft op manager_prep-sectie, peer op peer_360.
+        const sectionKey =
+          peerId === prRow.manager_id ? "manager_prep" : "peer_360";
+        questions = (prRow.template.sections?.[sectionKey] ?? []) as TemplateQuestion[];
+      } else {
+        questions = prRow.template.questions ?? [];
+      }
+    }
+
     return {
       feedback: row,
       requester: row.recipient,
@@ -359,7 +382,7 @@ export async function getFeedbackRequestDetailForPeer(
         ? {
             id: prRow.template.id,
             name: prRow.template.name,
-            questions: prRow.template.questions ?? [],
+            questions,
           }
         : null,
       source_kind: "performance_review",
