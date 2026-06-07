@@ -96,6 +96,21 @@ type SeedTemplate = {
 };
 
 const BAMBELO_GROWTH_BUNDLE_ID = "b4bf0001-0000-4000-8000-000000000001";
+const BAMBELO_GROWTH_CHECK_ID = "b4bf0004-0000-4000-8000-000000000004";
+
+function statement(
+  id: string,
+  label: string,
+  hint: string,
+): Question {
+  return {
+    id,
+    label,
+    hint,
+    kind: "rating_b_1_5",
+    required: true,
+  };
+}
 
 const TEMPLATES: SeedTemplate[] = [
   {
@@ -340,6 +355,46 @@ const TEMPLATES: SeedTemplate[] = [
         hint: "Iets praktisch dat jullie vaker of anders zouden kunnen doen.",
       },
     ],
+  },
+  {
+    id: BAMBELO_GROWTH_CHECK_ID,
+    type: "performance_review_bundle",
+    name: "Bambelo growth check",
+    questions: [],
+    sections: {
+      self_reflection: [
+        statement("self_strengths", "Strengths", "I use my strengths effectively in my work."),
+        statement("self_openness", "Openness", "I am open to feedback and development."),
+        statement("self_growth", "Growth", "I have shown growth since my last growth conversation."),
+        statement("self_goals", "Goals", "I meet my goals and KPIs."),
+        statement("self_contribution", "Contribution", "I deliver valuable contributions to the team."),
+        statement("self_ambitions", "Ambitions", "I have a clear sense of my ambitions within Bambelo."),
+      ],
+      peer_360: [
+        statement("peer_collaboration", "Collaboration", "Your colleague is pleasant and reliable to work with."),
+        statement("peer_communication", "Communication", "Your colleague communicates clearly and openly."),
+        statement("peer_helpfulness", "Helpfulness", "Your colleague is ready to help others."),
+        statement("peer_openness", "Openness", "Your colleague is open to feedback from peers."),
+        statement("peer_value", "Value", "Your colleague brings unique value to the team."),
+        statement("peer_atmosphere", "Atmosphere", "Your colleague contributes to a positive atmosphere."),
+      ],
+      manager_prep: [
+        statement("mgr_strengths", "Strengths", "The employee uses their strengths effectively at work."),
+        statement("mgr_openness", "Openness", "The employee is open to development and feedback."),
+        statement("mgr_growth", "Growth", "The employee has shown growth since the last growth conversation."),
+        statement("mgr_goals", "Goals", "The employee meets the agreed goals and KPIs."),
+        statement("mgr_contribution", "Contribution", "The employee delivers valuable contributions to the team."),
+        statement("mgr_potential", "Potential", "The employee shows potential to grow further within Bambelo."),
+      ],
+      upward: [
+        statement("up_leadership", "Leadership", "Your manager is strong in their role as a leader."),
+        statement("up_support", "Support", "Your manager supports my growth and development."),
+        statement("up_direction", "Direction", "Your manager gives clear direction and expectations."),
+        statement("up_openness", "Openness", "Your manager is open to feedback."),
+        statement("up_impact", "Impact", "Your manager contributes to my success and effectiveness."),
+        statement("up_collaboration", "Collaboration", "Your manager fosters good collaboration."),
+      ],
+    },
   },
   {
     type: "evaluation",
