@@ -17,17 +17,25 @@ import {
   listOpenPerformanceReviewsForManager,
   listScheduledPerformanceReviewsForManager,
 } from "@/lib/performance-reviews/queries";
+import {
+  getManagerConversationsBetween,
+  getManagerNotifications,
+} from "@/lib/dashboard/manager-queries";
 import { DashboardViewSwitcher } from "@/components/dashboard/dashboard-view-switcher";
+import { TWO_WEEK_WINDOW_DAYS } from "@/components/dashboard/manager/manager-dashboard";
 import { formatDate } from "@/lib/format";
 
 const FOUR_WEEKS_MS = 4 * 7 * 24 * 60 * 60 * 1000;
 
 export default async function DashboardPage() {
   const persona = await requirePersona();
-  return <PersonView persona={persona} />;
+  if (persona.role === "manager") {
+    return <ManagerView persona={persona} />;
+  }
+  return <EmployeeView persona={persona} />;
 }
 
-function buildSubtitle({
+function buildEmployeeSubtitle({
   openTotal,
   upcomingDate,
 }: {
@@ -44,9 +52,81 @@ function buildSubtitle({
   return `${items}.`;
 }
 
-async function PersonView({ persona }: { persona: Persona }) {
-  const isManager = persona.role === "manager";
-  const fourWeeksAgoIso = new Date(Date.now() - FOUR_WEEKS_MS).toISOString();
+function buildManagerSubtitle({
+  eventCount,
+  notificationCount,
+}: {
+  eventCount: number;
+  notificationCount: number;
+}): string {
+  if (eventCount === 0 && notificationCount === 0) {
+    return "Geen geplande gesprekken, niks dat opvalt.";
+  }
+  const parts: string[] = [];
+  if (eventCount > 0) {
+    parts.push(
+      eventCount === 1
+        ? "1 gesprek de komende 2 weken"
+        : `${eventCount} gesprekken de komende 2 weken`,
+    );
+  }
+  if (notificationCount > 0) {
+    parts.push(
+      notificationCount === 1
+        ? "1 signaal om te bekijken"
+        : `${notificationCount} signalen om te bekijken`,
+    );
+  }
+  return `${parts.join(" · ")}.`;
+}
+
+async function ManagerView({ persona }: { persona: Persona }) {
+  const now = new Date();
+  const startIso = now.toISOString();
+  const twoWeekEnd = new Date(
+    now.getTime() + TWO_WEEK_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+  const [twoWeekEvents, monthEvents, notifications] = await Promise.all([
+    getManagerConversationsBetween(
+      persona.id,
+      startIso,
+      twoWeekEnd.toISOString(),
+    ),
+    getManagerConversationsBetween(
+      persona.id,
+      monthStart.toISOString(),
+      monthEnd.toISOString(),
+    ),
+    getManagerNotifications(persona.id),
+  ]);
+
+  const subtitle = buildManagerSubtitle({
+    eventCount: twoWeekEvents.length,
+    notificationCount: notifications.length,
+  });
+
+  return (
+    <DashboardViewSwitcher
+      variant="manager"
+      data={{
+        persona,
+        subtitle,
+        twoWeekEvents,
+        monthEvents,
+        monthStart,
+        notifications,
+      }}
+    />
+  );
+}
+
+async function EmployeeView({ persona }: { persona: Persona }) {
+  const fourWeeksAgoIso = new Date(
+    new Date().getTime() - FOUR_WEEKS_MS,
+  ).toISOString();
   const [
     upcoming,
     managerUpcoming,
@@ -61,27 +141,30 @@ async function PersonView({ persona }: { persona: Persona }) {
     scheduledPerformanceReviews,
   ] = await Promise.all([
     getUpcomingOneOnOneForEmployee(persona.id),
-    isManager ? getUpcomingOneOnOnesForManager(persona.id) : Promise.resolve([]),
+    getUpcomingOneOnOnesForManager(persona.id),
     getOpenFeedbackRequestsForPeer(persona.id),
     getDossierForEmployee(persona.id),
     getFeedbackForEmployee(persona.id),
     countFeedbackReceivedSince(persona.id, fourWeeksAgoIso),
     getLatestCompletedOneOnOneForUser(persona.id, persona.role),
-    isManager ? getTeamMembers(persona.id) : Promise.resolve([]),
+    getTeamMembers(persona.id),
     getUpcomingPerformanceReviewForEmployee(persona.id),
-    isManager ? listOpenPerformanceReviewsForManager(persona.id) : Promise.resolve([]),
-    isManager ? listScheduledPerformanceReviewsForManager(persona.id) : Promise.resolve([]),
+    listOpenPerformanceReviewsForManager(persona.id),
+    listScheduledPerformanceReviewsForManager(persona.id),
   ]);
 
-  const subtitle = buildSubtitle({
+  const subtitle = buildEmployeeSubtitle({
     openTotal: dossier.stats.openTotal,
-    upcomingDate: upcoming?.scheduled_at ?? managerUpcoming[0]?.scheduled_at ?? null,
+    upcomingDate:
+      upcoming?.scheduled_at ?? managerUpcoming[0]?.scheduled_at ?? null,
   });
 
   return (
     <DashboardViewSwitcher
+      variant="employee"
       data={{
         persona,
+        subtitle,
         upcoming,
         managerUpcoming,
         feedbackRequests,
@@ -93,7 +176,6 @@ async function PersonView({ persona }: { persona: Persona }) {
         ownOpenPerformanceReview,
         managerOpenPerformanceReviews,
         scheduledPerformanceReviews,
-        subtitle,
       }}
     />
   );

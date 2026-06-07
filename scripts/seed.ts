@@ -82,15 +82,20 @@ type Question = {
 };
 
 type SeedTemplate = {
+  id?: string;
   type:
     | "one_on_one"
     | "performance_review"
+    | "performance_review_bundle"
     | "evaluation"
     | "peer_360"
     | "upward_feedback";
   name: string;
   questions: Question[];
+  sections?: Record<string, Question[]>;
 };
+
+const BAMBELO_GROWTH_BUNDLE_ID = "b4bf0001-0000-4000-8000-000000000001";
 
 const TEMPLATES: SeedTemplate[] = [
   {
@@ -124,50 +129,159 @@ const TEMPLATES: SeedTemplate[] = [
     ],
   },
   {
-    type: "peer_360",
-    name: "Functioneringsgesprek 360",
-    questions: [
-      {
-        id: "vakmanschap",
-        label: "Vakmanschap en kennis",
-        kind: "rating_b_1_5",
-        required: true,
-        hint: "Hoe sterk is iemand inhoudelijk in zijn of haar werk?",
-      },
-      {
-        id: "samenwerking",
-        label: "Samenwerking",
-        kind: "rating_b_1_5",
-        required: true,
-        hint: "Hoe loopt het samen werken in en buiten het team?",
-      },
-      {
-        id: "eigenaarschap",
-        label: "Eigenaarschap en initiatief",
-        kind: "rating_b_1_5",
-        required: true,
-        hint: "Pakt iemand zelf zaken op en ziet hij of zij wat er gedaan moet worden?",
-      },
-      {
-        id: "communicatie",
-        label: "Communicatie",
-        kind: "rating_b_1_5",
-        required: true,
-        hint: "Helder, op tijd, en in de juiste toon: schriftelijk en mondeling.",
-      },
-      {
-        id: "ontwikkeling",
-        label: "Leervermogen en ontwikkeling",
-        kind: "rating_b_1_5",
-        hint: "Hoe open en gericht leert iemand van feedback en ervaringen?",
-      },
-      {
-        id: "open",
-        label: "Wat wil je verder nog meegeven?",
-        kind: "open",
-        hint: "Een algemeen punt, een compliment, of iets dat buiten de scores valt.",
-      },
-    ],
+    id: BAMBELO_GROWTH_BUNDLE_ID,
+    type: "performance_review_bundle",
+    name: "Bambelo growth conversation",
+    questions: [],
+    sections: {
+      self_reflection: [
+        {
+          id: "self_strengths",
+          label: "Top three strengths",
+          hint: "What are your top three strengths and how did you apply them to your work since your last growth conversation?",
+          kind: "open",
+          required: true,
+        },
+        {
+          id: "self_dev_scale",
+          label: "Development opportunities",
+          hint: "To what extent do you see concrete development opportunities to focus on before your next growth conversation? Name up to three development opportunities and the steps you would like to take. (1 = none, 5 = many)",
+          kind: "rating_b_1_5",
+          required: true,
+        },
+        {
+          id: "self_dev_focus",
+          label: "Skills to develop",
+          hint: "Which skills, knowledge areas or competencies would you like to further develop during the next six months? Are there specific projects, responsibilities or experiences that could help you develop these?",
+          kind: "open",
+        },
+        {
+          id: "self_career",
+          label: "Career growth at Bambelo",
+          hint: "Looking ahead, how would you like to grow within Bambelo? Choose: further develop within my current role / grow towards a different role within my current department / explore opportunities outside my current department / unsure at this moment. Please elaborate on your choice.",
+          kind: "open",
+        },
+        {
+          id: "self_achievements",
+          label: "Key achievements",
+          hint: "Looking back at the past six months, what were your most important achievements and contributions?",
+          kind: "open",
+        },
+        {
+          id: "self_goals_scale",
+          label: "Goal achievement",
+          hint: "To what extent did you achieve your goals, KPIs and expected outcomes? Provide examples and explain any goals or expectations that were not fully achieved. (1 = not achieved, 5 = fully achieved)",
+          kind: "rating_b_1_5",
+        },
+        {
+          id: "self_diff_scale",
+          label: "What would you do differently",
+          hint: "To what extent would you do things differently moving forward? What would you do differently? (1 = nothing, 5 = a lot)",
+          kind: "rating_b_1_5",
+        },
+      ],
+      peer_360: [
+        {
+          id: "peer_continue",
+          label: "Continue doing",
+          hint: "What is one thing your colleague currently does that you would like them to continue doing?",
+          kind: "open",
+          required: true,
+        },
+        {
+          id: "peer_impact_scale",
+          label: "Room for more impact",
+          hint: "To what extent could your colleague do more to increase their impact and effectiveness? What is that one thing? (1 = little room, 5 = a lot of room)",
+          kind: "rating_b_1_5",
+          required: true,
+        },
+        {
+          id: "peer_diff",
+          label: "Do differently",
+          hint: "What is one thing your colleague could do differently to support their growth and development? (e.g. start doing, stop doing, or do differently)",
+          kind: "open",
+        },
+        {
+          id: "peer_unique_scale",
+          label: "Unique value to the team",
+          hint: "To what extent does your colleague bring unique value to the team? Please describe what that value is. (1 = limited, 5 = very much)",
+          kind: "rating_b_1_5",
+        },
+      ],
+      manager_prep: [
+        {
+          id: "mgr_strengths",
+          label: "Employee strengths",
+          hint: "What are this employee's top three strengths and how have they applied them to their work since the last growth conversation?",
+          kind: "open",
+          required: true,
+        },
+        {
+          id: "mgr_dev_scale",
+          label: "Development opportunities",
+          hint: "To what extent do you see concrete development opportunities for this employee to focus on before the next growth conversation? Which up to three development opportunities and steps would you suggest? (1 = none, 5 = many clear opportunities)",
+          kind: "rating_b_1_5",
+          required: true,
+        },
+        {
+          id: "mgr_dev_focus",
+          label: "Skills with biggest impact",
+          hint: "Which skills, knowledge areas or competencies would have the greatest impact on this employee's growth over the next six months?",
+          kind: "open",
+        },
+        {
+          id: "mgr_career",
+          label: "Growth opportunities at Bambelo",
+          hint: "Based on the ambitions and development interests shared by the employee, what opportunities for growth and development do you currently see within Bambelo? Indicate whether these are primarily: within the current role / within the current department / outside the current department / further exploration needed. Provide examples where relevant.",
+          kind: "open",
+        },
+        {
+          id: "mgr_goals_scale",
+          label: "Goal achievement",
+          hint: "To what extent did this employee achieve their goals, KPIs and expected outcomes during the past six months? Provide specific examples, results and context (consider goal achievement, KPI performance, key contributions, areas for improvement and contextual factors). (1 = not achieved, 5 = fully achieved)",
+          kind: "rating_b_1_5",
+        },
+      ],
+      upward: [
+        {
+          id: "up_strengths",
+          label: "Manager strengths",
+          hint: "What are your manager's top strengths as a manager?",
+          kind: "open",
+          required: true,
+        },
+        {
+          id: "up_continue_scale",
+          label: "Continue doing",
+          hint: "To what extent is there something your manager currently does that you would like them to continue doing? Name that one thing. (1 = hardly, 5 = very much)",
+          kind: "rating_b_1_5",
+        },
+        {
+          id: "up_more",
+          label: "Do more of",
+          hint: "What is one thing your manager could do more of to better support your growth and development?",
+          kind: "open",
+        },
+        {
+          id: "up_diff_scale",
+          label: "Do differently",
+          hint: "To what extent could your manager do something differently to help you be more effective in your role? What is that (e.g. start doing, stop doing, or do differently)? (1 = little room, 5 = a lot of room)",
+          kind: "rating_b_1_5",
+        },
+        {
+          id: "up_impact_scale",
+          label: "Manager support",
+          hint: "To what extent has your manager supported your success, growth and development during the past six months? In which areas would you have liked more support? (1 = hardly, 5 = very strongly)",
+          kind: "rating_b_1_5",
+        },
+        {
+          id: "up_collab",
+          label: "Strengthening collaboration",
+          hint: "Is there anything else you would like to share that could strengthen the collaboration between you and your manager?",
+          kind: "open",
+        },
+      ],
+    },
   },
   {
     type: "peer_360",
@@ -224,40 +338,6 @@ const TEMPLATES: SeedTemplate[] = [
         label: "Wat zou de samenwerking nog beter maken?",
         kind: "open",
         hint: "Iets praktisch dat jullie vaker of anders zouden kunnen doen.",
-      },
-    ],
-  },
-  {
-    type: "upward_feedback",
-    name: "Feedback aan je manager",
-    questions: [
-      {
-        id: "waardering",
-        label: "Wat waardeer je in de samenwerking met je manager?",
-        kind: "open",
-        hint: "Iets concreets dat goed gaat. Een voorbeeld helpt het te laten landen.",
-      },
-      {
-        id: "groei",
-        label: "Waar zou je manager in jouw ogen het meest in kunnen groeien?",
-        kind: "open",
-        hint: "Eén punt is genoeg. Beschrijf wat je ziet en wat het effect op jou is.",
-      },
-      {
-        id: "meer",
-        label: "Wat zou je willen dat je manager meer doet?",
-        kind: "open",
-      },
-      {
-        id: "minder",
-        label: "Wat zou je willen dat je manager minder doet?",
-        kind: "open",
-      },
-      {
-        id: "vrij",
-        label: "Iets anders dat je wil meegeven?",
-        kind: "open",
-        hint: "Een compliment, observatie of vraag die buiten de andere punten valt.",
       },
     ],
   },

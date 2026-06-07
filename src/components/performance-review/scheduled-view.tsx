@@ -47,7 +47,7 @@ import type {
   PerformanceReviewFull,
 } from "@/lib/performance-reviews/types";
 import type { FeedbackWithSource } from "@/lib/feedback/types";
-import { FeedbackRow } from "@/components/feedback/feedback-view";
+import { MemberFeedbackTable } from "@/components/team/member-feedback-table";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { TemplateAnswers } from "./template-answers";
@@ -62,7 +62,9 @@ type Status = "open" | "completed" | "expired";
 
 export function PerformanceReviewScheduledView({
   review,
-  questions,
+  selfQuestions,
+  peerQuestions,
+  managerQuestions,
   cycleInputs,
   newActionItems,
   dossierActionItems,
@@ -71,7 +73,9 @@ export function PerformanceReviewScheduledView({
   windowEnd,
 }: {
   review: PerformanceReviewFull;
-  questions: TemplateQuestion[];
+  selfQuestions: TemplateQuestion[];
+  peerQuestions: TemplateQuestion[];
+  managerQuestions: TemplateQuestion[];
   cycleInputs: CycleInputs;
   newActionItems: ActionItem[];
   dossierActionItems: DossierActionItem[];
@@ -175,7 +179,7 @@ export function PerformanceReviewScheduledView({
           title={`Zelfreflectie ${review.employee.name.split(" ")[0]}`}
         >
           <TemplateAnswers
-            questions={questions}
+            questions={selfQuestions}
             answers={review.employee_self_evaluation}
             emptyLabel={`${review.employee.name} heeft niks ingevuld.`}
           />
@@ -194,7 +198,7 @@ export function PerformanceReviewScheduledView({
             <Empty>Geen peer gekoppeld.</Empty>
           ) : cycleInputs.peer.status === "submitted" ? (
             <TemplateAnswers
-              questions={questions}
+              questions={peerQuestions}
               answers={cycleInputs.peer.responses}
               emptyLabel="Geen vragen ingevuld."
             />
@@ -211,7 +215,7 @@ export function PerformanceReviewScheduledView({
         >
           {cycleInputs.manager?.status === "submitted" ? (
             <TemplateAnswers
-              questions={questions}
+              questions={managerQuestions}
               answers={cycleInputs.manager.responses}
               emptyLabel="Geen vragen ingevuld."
             />
@@ -480,13 +484,7 @@ function ReceivedFeedbackBrowser({ items }: { items: FeedbackWithSource[] }) {
       </p>
     );
   }
-  return (
-    <ul className="space-y-3">
-      {items.map((f) => (
-        <FeedbackRow key={f.id} item={f} />
-      ))}
-    </ul>
-  );
+  return <MemberFeedbackTable items={items} hideToolbar />;
 }
 
 function NewActionItems({

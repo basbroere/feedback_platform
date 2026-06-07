@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowUp, ArrowDown, Pencil } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -21,17 +21,38 @@ import {
   createTemplate,
   updateTemplate,
 } from "@/lib/templates/actions";
-import { TEMPLATE_TYPE_LABEL, type TemplateType } from "@/lib/templates/types";
+import {
+  PERFORMANCE_REVIEW_SECTION_KEYS,
+  PERFORMANCE_REVIEW_SECTION_LABEL,
+  TEMPLATE_TYPE_LABEL,
+  type PerformanceReviewBundleSections,
+  type PerformanceReviewSectionKey,
+  type TemplateType,
+} from "@/lib/templates/types";
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
 import { cn } from "@/lib/utils";
+import {
+  TemplateSectionStepper,
+  type SectionFilledMap,
+} from "./template-section-stepper";
 
 const TYPE_OPTIONS: TemplateType[] = [
+  "performance_review_bundle",
   "peer_feedback",
-  "peer_360",
-  "upward_feedback",
   "one_on_one",
   "evaluation",
 ];
+
+const SECTION_DESCRIPTIONS: Record<PerformanceReviewSectionKey, string> = {
+  self_reflection:
+    "Vragen waarmee de medewerker reflecteert op zichzelf voorafgaand aan het gesprek.",
+  peer_360:
+    "Vragen die een collega (1 peer) beantwoordt over de medewerker. Sta cross-team feedback expliciet toe.",
+  manager_prep:
+    "Vragen waarmee de manager zijn eigen feedback en observaties op een rij zet.",
+  upward:
+    "Vragen waarmee de medewerker optioneel feedback teruggeeft aan de manager.",
+};
 
 const KIND_OPTIONS: {
   value: TemplateQuestion["kind"];
@@ -67,6 +88,7 @@ type Props =
       initialName: string;
       initialType: TemplateType;
       initialQuestions: TemplateQuestion[];
+      initialSections: PerformanceReviewBundleSections | null;
       triggerLabel?: string;
       asMenuItem?: boolean;
     };
@@ -84,11 +106,37 @@ const EMPTY_DRAFT: DraftQuestion = {
   kind: "rating_b_1_5",
 };
 
+function emptySectionDraft(): Record<
+  PerformanceReviewSectionKey,
+  DraftQuestion[]
+> {
+  return {
+    self_reflection: [{ ...EMPTY_DRAFT, _key: "init_self" }],
+    peer_360: [{ ...EMPTY_DRAFT, _key: "init_peer" }],
+    manager_prep: [{ ...EMPTY_DRAFT, _key: "init_mgr" }],
+    upward: [{ ...EMPTY_DRAFT, _key: "init_upward" }],
+  };
+}
+
+function sectionsFromInitial(
+  initial: PerformanceReviewBundleSections | null,
+): Record<PerformanceReviewSectionKey, DraftQuestion[]> {
+  if (!initial) return emptySectionDraft();
+  const out = {} as Record<PerformanceReviewSectionKey, DraftQuestion[]>;
+  for (const key of PERFORMANCE_REVIEW_SECTION_KEYS) {
+    const arr = initial[key] ?? [];
+    out[key] = arr.length
+      ? arr.map(withKey)
+      : [{ ...EMPTY_DRAFT, _key: `init_${key}` }];
+  }
+  return out;
+}
+
 export function TemplateEditorDialog(props: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TemplateType>(
-    props.mode === "edit" ? props.initialType : "peer_feedback",
+    props.mode === "edit" ? props.initialType : "performance_review_bundle",
   );
   const [name, setName] = useState(
     props.mode === "edit" ? props.initialName : "",
@@ -98,8 +146,19 @@ export function TemplateEditorDialog(props: Props) {
       ? props.initialQuestions.map(withKey)
       : [{ ...EMPTY_DRAFT, _key: "init" }],
   );
+  const [sections, setSections] = useState<
+    Record<PerformanceReviewSectionKey, DraftQuestion[]>
+  >(() =>
+    props.mode === "edit"
+      ? sectionsFromInitial(props.initialSections)
+      : emptySectionDraft(),
+  );
+  const [activeSection, setActiveSection] =
+    useState<PerformanceReviewSectionKey>("self_reflection");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const isBundle = type === "performance_review_bundle";
 
   // Reset bij heropen.
   useEffect(() => {
@@ -108,24 +167,52 @@ export function TemplateEditorDialog(props: Props) {
       setType(props.initialType);
       setName(props.initialName);
       setQuestions(props.initialQuestions.map(withKey));
+      setSections(sectionsFromInitial(props.initialSections));
     } else {
-      setType("peer_feedback");
+      setType("performance_review_bundle");
       setName("");
       setQuestions([{ ...EMPTY_DRAFT, _key: "init" }]);
+      setSections(emptySectionDraft());
     }
+    setActiveSection("self_reflection");
     setError(null);
   }, [open, props]);
 
+  const activeQuestions = isBundle ? sections[activeSection] : questions;
+  const sectionFilled: SectionFilledMap = useMemo(() => {
+    const out = {} as SectionFilledMap;
+    for (const key of PERFORMANCE_REVIEW_SECTION_KEYS) {
+      out[key] = sections[key].some((q) => q.label.trim().length > 0);
+    }
+    return out;
+  }, [sections]);
+  const allSectionsFilled =
+    sectionFilled.self_reflection &&
+    sectionFilled.peer_360 &&
+    sectionFilled.manager_prep &&
+    sectionFilled.upward;
+
+  function patchActive(updater: (qs: DraftQuestion[]) => DraftQuestion[]) {
+    if (isBundle) {
+      setSections((prev) => ({
+        ...prev,
+        [activeSection]: updater(prev[activeSection]),
+      }));
+    } else {
+      setQuestions((prev) => updater(prev));
+    }
+  }
+
   function updateQ(key: string, patch: Partial<TemplateQuestion>) {
-    setQuestions((p) => p.map((q) => (q._key === key ? { ...q, ...patch } : q)));
+    patchActive((p) => p.map((q) => (q._key === key ? { ...q, ...patch } : q)));
   }
 
   function removeQ(key: string) {
-    setQuestions((p) => p.filter((q) => q._key !== key));
+    patchActive((p) => p.filter((q) => q._key !== key));
   }
 
   function move(key: string, delta: -1 | 1) {
-    setQuestions((p) => {
+    patchActive((p) => {
       const idx = p.findIndex((q) => q._key === key);
       if (idx === -1) return p;
       const target = idx + delta;
@@ -138,25 +225,70 @@ export function TemplateEditorDialog(props: Props) {
   }
 
   function addQuestion() {
-    setQuestions((p) => [
+    patchActive((p) => [
       ...p,
-      {
-        ...EMPTY_DRAFT,
-        _key: Math.random().toString(36).slice(2),
-      },
+      { ...EMPTY_DRAFT, _key: Math.random().toString(36).slice(2) },
     ]);
   }
 
-  function save() {
-    setError(null);
-    const stripped: TemplateQuestion[] = questions.map((q) => ({
+  function stripDraft(q: DraftQuestion): TemplateQuestion {
+    return {
       id: q.id,
       label: q.label,
       kind: q.kind,
       ...(q.hint ? { hint: q.hint } : {}),
       ...(q.required ? { required: true } : {}),
       ...(q.options && q.options.length ? { options: q.options } : {}),
-    }));
+    };
+  }
+
+  function save() {
+    setError(null);
+    if (isBundle) {
+      if (!allSectionsFilled) {
+        setError(
+          "Vul minstens één vraag in voor elk van de vier stappen voordat je publiceert.",
+        );
+        return;
+      }
+      const sectionPayload = {} as Record<
+        PerformanceReviewSectionKey,
+        TemplateQuestion[]
+      >;
+      for (const key of PERFORMANCE_REVIEW_SECTION_KEYS) {
+        sectionPayload[key] = sections[key]
+          .filter((q) => q.label.trim().length > 0)
+          .map(stripDraft);
+      }
+      startTransition(async () => {
+        try {
+          if (props.mode === "edit") {
+            await updateTemplate({
+              id: props.templateId,
+              name,
+              questions: [],
+              sections: sectionPayload,
+            });
+          } else {
+            await createTemplate({
+              type,
+              name,
+              questions: [],
+              sections: sectionPayload,
+            });
+          }
+          setOpen(false);
+          router.refresh();
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Opslaan mislukt");
+        }
+      });
+      return;
+    }
+
+    const stripped = questions
+      .filter((q) => q.label.trim().length > 0)
+      .map(stripDraft);
     startTransition(async () => {
       try {
         if (props.mode === "edit") {
@@ -206,8 +338,9 @@ export function TemplateEditorDialog(props: Props) {
             {props.mode === "edit" ? "Template bewerken" : "Nieuw template"}
           </DialogTitle>
           <DialogDescription>
-            Vragen worden in de UI altijd als suggesties getoond, niet als
-            verplichte invoer.
+            {isBundle
+              ? "Een functioneringsgesprek-template bundelt vier stappen: zelfreflectie, peer 360, manager-voorbereiding en upward feedback. Voor publicatie heeft elke stap minstens één vraag."
+              : "Vragen worden in de UI altijd als suggesties getoond, niet als verplichte invoer."}
           </DialogDescription>
         </DialogHeader>
 
@@ -219,7 +352,11 @@ export function TemplateEditorDialog(props: Props) {
                 id="tpl-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Bijv. 360 functioneringsgesprek"
+                placeholder={
+                  isBundle
+                    ? "Bijv. Halfjaarlijks functioneringsgesprek"
+                    : "Bijv. Reguliere 1-op-1"
+                }
               />
             </div>
             <div className="grid gap-1.5">
@@ -240,18 +377,35 @@ export function TemplateEditorDialog(props: Props) {
             </div>
           </div>
 
+          {isBundle ? (
+            <div className="space-y-3">
+              <TemplateSectionStepper
+                active={activeSection}
+                filled={sectionFilled}
+                onSelect={setActiveSection}
+              />
+              <p className="text-[12.5px] text-muted-foreground">
+                {SECTION_DESCRIPTIONS[activeSection]}
+              </p>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
               <Label className="text-[13px] font-medium font-heading text-muted-foreground">
-                Vragen
+                {isBundle
+                  ? `Vragen voor ${PERFORMANCE_REVIEW_SECTION_LABEL[
+                      activeSection
+                    ].toLowerCase()}`
+                  : "Vragen"}
               </Label>
               <span className="text-[12px] text-muted-foreground">
-                {questions.length}{" "}
-                {questions.length === 1 ? "vraag" : "vragen"}
+                {activeQuestions.length}{" "}
+                {activeQuestions.length === 1 ? "vraag" : "vragen"}
               </span>
             </div>
             <ul className="space-y-3">
-              {questions.map((q, idx) => (
+              {activeQuestions.map((q, idx) => (
                 <li
                   key={q._key}
                   className="rounded-xl bg-card p-3 space-y-3 shadow-sm"
@@ -276,7 +430,7 @@ export function TemplateEditorDialog(props: Props) {
                         size="icon-sm"
                         variant="ghost"
                         onClick={() => move(q._key, 1)}
-                        disabled={idx === questions.length - 1}
+                        disabled={idx === activeQuestions.length - 1}
                         aria-label="Omlaag"
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
@@ -427,6 +581,13 @@ export function TemplateEditorDialog(props: Props) {
             </Button>
           </div>
 
+          {isBundle && !allSectionsFilled ? (
+            <p className="text-[12.5px] text-muted-foreground">
+              Voeg in elk van de vier stappen minstens één vraag toe om dit
+              template te kunnen opslaan.
+            </p>
+          ) : null}
+
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
@@ -437,7 +598,11 @@ export function TemplateEditorDialog(props: Props) {
           >
             Annuleer
           </DialogClose>
-          <Button size="sm" onClick={save} disabled={isPending}>
+          <Button
+            size="sm"
+            onClick={save}
+            disabled={isPending || (isBundle && !allSectionsFilled)}
+          >
             {isPending ? "Bezig..." : "Opslaan"}
           </Button>
         </DialogFooter>

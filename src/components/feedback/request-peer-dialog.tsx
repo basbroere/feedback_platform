@@ -17,10 +17,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
+import { TemplatePreviewButton } from "@/components/templates/template-preview-button";
 import { createPeerFeedbackRequest } from "@/lib/feedback/actions";
 import type { TeamWithMembers } from "@/lib/persona/server";
-
-type TemplateOption = { id: string; name: string };
+import type { TemplateOption } from "@/lib/templates/queries";
 
 export function RequestPeerDialog({
   teams,
@@ -185,7 +185,18 @@ export function RequestPeerDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="req-template">Template</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="req-template">Template</Label>
+                  {(() => {
+                    const t = templates.find((t) => t.id === templateId);
+                    return t ? (
+                      <TemplatePreviewButton
+                        name={t.name}
+                        questions={t.questions}
+                      />
+                    ) : null;
+                  })()}
+                </div>
                 <select
                   id="req-template"
                   value={templateId}

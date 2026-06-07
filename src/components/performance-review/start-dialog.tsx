@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { startPerformanceReview } from "@/lib/performance-reviews/actions";
-import type { PerformanceReviewTemplate } from "@/lib/performance-reviews/types";
+import type { PerformanceReviewBundle } from "@/lib/performance-reviews/template";
 import type { PersonRef } from "@/lib/one-on-ones/types";
+import { TemplatePreviewButton } from "@/components/templates/template-preview-button";
 import { cn } from "@/lib/utils";
 
 function defaultScheduledAt(): string {
@@ -33,7 +34,7 @@ type Props =
       employeeId: string;
       employeeName: string;
       teamMembers?: undefined;
-      templates: PerformanceReviewTemplate[];
+      templates: PerformanceReviewBundle[];
       triggerLabel?: string;
       triggerVariant?: "default" | "outline" | "secondary" | "ghost";
     }
@@ -41,7 +42,7 @@ type Props =
       employeeId?: undefined;
       employeeName?: undefined;
       teamMembers: PersonRef[];
-      templates: PerformanceReviewTemplate[];
+      templates: PerformanceReviewBundle[];
       triggerLabel?: string;
       triggerVariant?: "default" | "outline" | "secondary" | "ghost";
     };
@@ -115,10 +116,11 @@ export function StartPerformanceReviewDialog(props: Props) {
               : "360 functioneringsgesprek starten"}
           </DialogTitle>
           <DialogDescription>
-            Drie perspectieven op hetzelfde template: {targetName} reflecteert
-            op zichzelf, kiest één collega voor peer-feedback, en jij vult als
-            manager dezelfde 360-vragen in. Voltooide actiepunten en ontvangen
-            feedback van het afgelopen half jaar staan straks naast elkaar.
+            Vier stromen in één template: {targetName} reflecteert op zichzelf,
+            kiest een collega voor 360-feedback, jij bereidt jouw eigen feedback
+            voor, en {targetName.split(" ")[0]} mag jou upward feedback geven.
+            Voltooide actiepunten en ontvangen feedback van het afgelopen half
+            jaar staan straks naast elkaar.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -161,7 +163,18 @@ export function StartPerformanceReviewDialog(props: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="pr-template">Template</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="pr-template">Template</Label>
+              {(() => {
+                const t = templates.find((t) => t.id === templateId);
+                return t ? (
+                  <TemplatePreviewButton
+                    name={t.name}
+                    sections={t.sections}
+                  />
+                ) : null;
+              })()}
+            </div>
             <select
               id="pr-template"
               value={templateId}

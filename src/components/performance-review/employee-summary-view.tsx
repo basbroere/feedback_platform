@@ -25,7 +25,7 @@ import type {
 } from "@/lib/performance-reviews/types";
 import type { FeedbackWithSource } from "@/lib/feedback/types";
 import { ActionItemList } from "@/components/one-on-one/action-item-list";
-import { FeedbackRow } from "@/components/feedback/feedback-view";
+import { MemberFeedbackTable } from "@/components/team/member-feedback-table";
 import { PersonAvatar } from "@/components/one-on-one/person-avatar";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,9 @@ import { TemplateAnswers } from "./template-answers";
 
 export function PerformanceReviewEmployeeSummaryView({
   review,
-  questions,
+  selfQuestions,
+  peerQuestions,
+  managerQuestions,
   actionItems,
   cycleInputs,
   dossierActionItems,
@@ -42,7 +44,9 @@ export function PerformanceReviewEmployeeSummaryView({
   windowEnd,
 }: {
   review: PerformanceReviewForEmployee;
-  questions: TemplateQuestion[];
+  selfQuestions: TemplateQuestion[];
+  peerQuestions: TemplateQuestion[];
+  managerQuestions: TemplateQuestion[];
   actionItems: ActionItem[];
   cycleInputs: CycleInputs;
   dossierActionItems: DossierActionItem[];
@@ -140,7 +144,7 @@ export function PerformanceReviewEmployeeSummaryView({
           </CardHeader>
           <CardContent>
             <TemplateAnswers
-              questions={questions}
+              questions={peerQuestions}
               answers={cycleInputs.peer.responses}
             />
           </CardContent>
@@ -157,7 +161,7 @@ export function PerformanceReviewEmployeeSummaryView({
           </CardHeader>
           <CardContent>
             <TemplateAnswers
-              questions={questions}
+              questions={managerQuestions}
               answers={cycleInputs.manager.responses}
             />
           </CardContent>
@@ -187,7 +191,7 @@ export function PerformanceReviewEmployeeSummaryView({
           </CardHeader>
           <CardContent>
             <TemplateAnswers
-              questions={questions}
+              questions={selfQuestions}
               answers={review.employee_self_evaluation}
             />
           </CardContent>
@@ -266,11 +270,7 @@ export function PerformanceReviewEmployeeSummaryView({
                 Geen ontvangen feedback in deze periode.
               </p>
             ) : (
-              <ul className="space-y-3">
-                {dossierFeedback.map((f) => (
-                  <FeedbackRow key={f.id} item={f} />
-                ))}
-              </ul>
+              <MemberFeedbackTable items={dossierFeedback} hideToolbar />
             )}
           </section>
         </CardContent>

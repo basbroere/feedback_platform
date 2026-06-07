@@ -10,7 +10,7 @@ import {
   listPerformanceReviewsForEmployee,
   listPerformanceReviewsForManager,
 } from "@/lib/performance-reviews/queries";
-import { listActivePerformanceReviewTemplates } from "@/lib/performance-reviews/template";
+import { listActivePerformanceReviewBundles } from "@/lib/performance-reviews/template";
 import {
   getManagerForEmployee,
   getTeamMembers,
@@ -122,7 +122,7 @@ async function ManagerView({ personaId }: { personaId: string }) {
     listPerformanceReviewsForManager(personaId),
     listPerformanceReviewsForEmployee(personaId),
     getTeamMembers(personaId),
-    listActivePerformanceReviewTemplates(),
+    listActivePerformanceReviewBundles(),
   ]);
 
   const employeesWithoutOpenReview = managerTeam

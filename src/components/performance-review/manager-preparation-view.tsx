@@ -41,11 +41,15 @@ type StatusState = "done" | "waiting" | "empty" | "skipped" | "draft" | "locked"
 
 export function ManagerPreparationView({
   review,
-  questions,
+  selfQuestions,
+  peerQuestions,
+  managerQuestions,
   cycleInputs,
 }: {
   review: PerformanceReviewFull;
-  questions: TemplateQuestion[];
+  selfQuestions: TemplateQuestion[];
+  peerQuestions: TemplateQuestion[];
+  managerQuestions: TemplateQuestion[];
   cycleInputs: CycleInputs;
 }) {
   const managerHasSubmitted = cycleInputs.manager?.status === "submitted";
@@ -102,7 +106,7 @@ export function ManagerPreparationView({
 
       <ManagerCycleFeedbackCard
         performanceReviewId={review.id}
-        questions={questions}
+        questions={managerQuestions}
         existing={cycleInputs.manager}
       />
 
@@ -110,11 +114,11 @@ export function ManagerPreparationView({
         <>
           <EmployeeSelfEvalCard
             employeeName={review.employee.name}
-            questions={questions}
+            questions={selfQuestions}
             selfEval={review.employee_self_evaluation}
           />
           <PeerFeedbackCard
-            questions={questions}
+            questions={peerQuestions}
             peer={cycleInputs.peer}
           />
         </>

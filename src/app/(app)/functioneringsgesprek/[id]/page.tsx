@@ -10,8 +10,10 @@ import {
   getPerformanceReviewForEmployee,
   getPerformanceReviewForManager,
 } from "@/lib/performance-reviews/queries";
-import { getTemplateById } from "@/lib/one-on-ones/template";
-import { getDefaultUpwardFeedbackTemplate } from "@/lib/performance-reviews/template";
+import {
+  EMPTY_BUNDLE_SECTIONS,
+  getPerformanceReviewBundleById,
+} from "@/lib/performance-reviews/template";
 import { PerformanceReviewMeetingView } from "@/components/performance-review/meeting-view";
 import { PerformanceReviewEmployeeSummaryView } from "@/components/performance-review/employee-summary-view";
 import { ManagerPreparationView } from "@/components/performance-review/manager-preparation-view";
@@ -27,23 +29,20 @@ export default async function PerformanceReviewDetail({
 
   const managerView = await getPerformanceReviewForManager(id, persona.id);
   if (managerView) {
-    const template = managerView.template_id
-      ? await getTemplateById(managerView.template_id)
+    const bundle = managerView.template_id
+      ? await getPerformanceReviewBundleById(managerView.template_id)
       : null;
-    const questions =
-      managerView.template?.questions ?? template?.questions ?? [];
+    const sections = bundle?.sections ?? EMPTY_BUNDLE_SECTIONS;
 
     const status = managerView.status;
 
     if (status === "completed") {
-      const [newItems, dossier, feedback, cycleInputs, upwardTemplate] =
-        await Promise.all([
-          getActiveActionItemsForPerformanceReview(managerView.id),
-          getPerformanceReviewDossier(managerView.id),
-          getDossierFeedback(managerView.id),
-          getCycleInputs(managerView.id),
-          getDefaultUpwardFeedbackTemplate(),
-        ]);
+      const [newItems, dossier, feedback, cycleInputs] = await Promise.all([
+        getActiveActionItemsForPerformanceReview(managerView.id),
+        getPerformanceReviewDossier(managerView.id),
+        getDossierFeedback(managerView.id),
+        getCycleInputs(managerView.id),
+      ]);
       return (
         <div className="space-y-6">
           <Link
@@ -55,8 +54,10 @@ export default async function PerformanceReviewDetail({
           </Link>
           <PerformanceReviewMeetingView
             review={managerView}
-            questions={questions}
-            upwardQuestions={upwardTemplate?.questions ?? []}
+            selfQuestions={sections.self_reflection}
+            peerQuestions={sections.peer_360}
+            managerQuestions={sections.manager_prep}
+            upwardQuestions={sections.upward}
             cycleInputs={cycleInputs}
             newActionItems={newItems}
             dossierActionItems={dossier?.completedActionItems ?? []}
@@ -87,7 +88,9 @@ export default async function PerformanceReviewDetail({
           </Link>
           <PerformanceReviewScheduledView
             review={managerView}
-            questions={questions}
+            selfQuestions={sections.self_reflection}
+            peerQuestions={sections.peer_360}
+            managerQuestions={sections.manager_prep}
             cycleInputs={cycleInputs}
             newActionItems={newItems}
             dossierActionItems={dossier?.completedActionItems ?? []}
@@ -114,7 +117,9 @@ export default async function PerformanceReviewDetail({
         </Link>
         <ManagerPreparationView
           review={managerView}
-          questions={questions}
+          selfQuestions={sections.self_reflection}
+          peerQuestions={sections.peer_360}
+          managerQuestions={sections.manager_prep}
           cycleInputs={cycleInputs}
         />
       </div>
@@ -124,11 +129,10 @@ export default async function PerformanceReviewDetail({
   const employeeView = await getPerformanceReviewForEmployee(id, persona.id);
   if (!employeeView) notFound();
 
-  const template = employeeView.template_id
-    ? await getTemplateById(employeeView.template_id)
+  const bundle = employeeView.template_id
+    ? await getPerformanceReviewBundleById(employeeView.template_id)
     : null;
-  const questions =
-    employeeView.template?.questions ?? template?.questions ?? [];
+  const sections = bundle?.sections ?? EMPTY_BUNDLE_SECTIONS;
 
   const [actionItems, cycleInputs, dossier, feedback] = await Promise.all([
     getActiveActionItemsForPerformanceReview(employeeView.id),
@@ -148,7 +152,9 @@ export default async function PerformanceReviewDetail({
       </Link>
       <PerformanceReviewEmployeeSummaryView
         review={employeeView}
-        questions={questions}
+        selfQuestions={sections.self_reflection}
+        peerQuestions={sections.peer_360}
+        managerQuestions={sections.manager_prep}
         actionItems={actionItems}
         cycleInputs={cycleInputs}
         dossierActionItems={dossier?.completedActionItems ?? []}

@@ -53,6 +53,7 @@ export function TemplateRowActions({
         initialName={template.name}
         initialType={template.type}
         initialQuestions={template.questions}
+        initialSections={template.sections}
       />
       <Button
         type="button"

@@ -1,17 +1,35 @@
 import { createClient } from "@/lib/supabase/server";
 import type { TemplateQuestion } from "@/lib/one-on-ones/types";
-import type { ManagedTemplate, TemplateType } from "./types";
+import {
+  PERFORMANCE_REVIEW_SECTION_KEYS,
+  type ManagedTemplate,
+  type PerformanceReviewBundleSections,
+  type TemplateType,
+} from "./types";
 
 // Types en labels staan in ./types zodat client components ze kunnen importeren
 // zonder de server-only supabase-client mee te trekken.
 export type { ManagedTemplate, TemplateType } from "./types";
 export { TEMPLATE_TYPE_LABEL } from "./types";
 
+function parseSections(
+  raw: unknown,
+): PerformanceReviewBundleSections | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const out = {} as PerformanceReviewBundleSections;
+  for (const key of PERFORMANCE_REVIEW_SECTION_KEYS) {
+    const value = r[key];
+    out[key] = Array.isArray(value) ? (value as TemplateQuestion[]) : [];
+  }
+  return out;
+}
+
 export async function listAllTemplates(): Promise<ManagedTemplate[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id, type, name, questions, is_active")
+    .select("id, type, name, questions, sections, is_active")
     .order("type")
     .order("name");
   if (error || !data) return [];
@@ -58,23 +76,52 @@ export async function listAllTemplates(): Promise<ManagedTemplate[]> {
     type: row.type as TemplateType,
     name: row.name as string,
     questions: (row.questions ?? []) as TemplateQuestion[],
+    sections: parseSections(row.sections),
     is_active: row.is_active as boolean,
     usage_count: usage.get(row.id as string) ?? 0,
   }));
 }
 
+export type TemplateOption = {
+  id: string;
+  name: string;
+  questions: TemplateQuestion[];
+};
+
 export async function listActivePeerFeedbackTemplates(): Promise<
-  Pick<ManagedTemplate, "id" | "name">[]
+  TemplateOption[]
 > {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id, name")
+    .select("id, name, questions")
     .eq("type", "peer_feedback")
     .eq("is_active", true)
     .order("name");
   if (error || !data) return [];
-  return data as { id: string; name: string }[];
+  return data.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    questions: (row.questions ?? []) as TemplateQuestion[],
+  }));
+}
+
+export async function listActiveOneOnOneTemplates(): Promise<
+  TemplateOption[]
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id, name, questions")
+    .eq("type", "one_on_one")
+    .eq("is_active", true)
+    .order("name");
+  if (error || !data) return [];
+  return data.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    questions: (row.questions ?? []) as TemplateQuestion[],
+  }));
 }
 
 export async function getManagedTemplate(
@@ -83,7 +130,7 @@ export async function getManagedTemplate(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id, type, name, questions, is_active")
+    .select("id, type, name, questions, sections, is_active")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
@@ -92,6 +139,7 @@ export async function getManagedTemplate(
     type: data.type as TemplateType,
     name: data.name as string,
     questions: (data.questions ?? []) as TemplateQuestion[],
+    sections: parseSections(data.sections),
     is_active: data.is_active as boolean,
     usage_count: 0,
   };

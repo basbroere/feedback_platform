@@ -37,6 +37,7 @@ export async function createOneOnOne(input: {
   employeeId: string;
   subject?: string;
   scheduledAt: string;
+  templateId?: string | null;
   recurrence?: RecurrenceInput | null;
 }): Promise<{ id: string; created: number }> {
   const managerId = await requirePersonaId();
@@ -62,7 +63,11 @@ export async function createOneOnOne(input: {
     throw new Error("Je leidt deze medewerker niet");
   }
 
-  const template = await getDefaultOneOnOneTemplate();
+  let templateId: string | null = input.templateId ?? null;
+  if (!templateId) {
+    const template = await getDefaultOneOnOneTemplate();
+    templateId = template?.id ?? null;
+  }
 
   const occurrences = input.recurrence
     ? Math.min(Math.max(input.recurrence.occurrences, 1), MAX_OCCURRENCES)
@@ -78,7 +83,7 @@ export async function createOneOnOne(input: {
     return {
       manager_id: managerId,
       employee_id: input.employeeId,
-      template_id: template?.id ?? null,
+      template_id: templateId,
       subject,
       scheduled_at: at.toISOString(),
     };
